@@ -1,0 +1,53 @@
+:root {
+  --paper: #faf8f3;
+  --ink: #16140f;
+  --ink-dim: #6b6558;
+  --rule: rgba(22, 20, 15, 0.16);
+  --rule-strong: rgba(22, 20, 15, 0.32);
+  --accent: #b3401f;
+  --accent-ink: #faf8f3;
+  --link-empty: rgba(22, 20, 15, 0.08);
+
+  --font-display: 'Iowan Old Style', 'Palatino Linotype', Palatino, 'Georgia', serif;
+  --font-mono: 'SF Mono', 'JetBrains Mono', ui-monospace, Menlo, Consolas, 'Courier New', monospace;
+  --font-body: -apple-system, BlinkMacSystemFont, 'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #100f0c;
+    --ink: #f2efe6;
+    --ink-dim: #8f897a;
+    --rule: rgba(242, 239, 230, 0.16);
+    --rule-strong: rgba(242, 239, 230, 0.32);
+    --accent: #e2703a;
+    --accent-ink: #100f0c;
+    --link-empty: rgba(242, 239, 230, 0.08);
+
+    color-scheme: dark;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+app-root {
+  display: block;
+  min-height: 100vh;
+}
