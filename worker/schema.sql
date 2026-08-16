@@ -22,5 +22,7 @@ CREATE TABLE IF NOT EXISTS sessions (
 );
 
 CREATE INDEX IF NOT EXISTS idx_instruments_updated_at ON instruments (updated_at);
+CREATE INDEX IF NOT EXISTS idx_instruments_deleted_at ON instruments (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_updated_at ON sessions (updated_at);
+CREATE INDEX IF NOT EXISTS idx_sessions_deleted_at ON sessions (deleted_at);
 CREATE INDEX IF NOT EXISTS idx_sessions_instrument_id ON sessions (instrument_id);

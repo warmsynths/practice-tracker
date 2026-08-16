@@ -5,10 +5,10 @@ End-to-end cloud synchronization for completed live stopwatch practice sessions,
 
 **Blocked by:** 02 — Instrument Kit Cloud Sync & Palette Propagation
 
-**Status:** ready-for-agent
+**Status:** closed
 
-- [ ] Supabase schema and indexes support querying tombstone rows where `deleted_at IS NOT NULL`.
-- [ ] Finishing a live stopwatch timer in `pt-main-view` generates a completed session and triggers an optimistic background sync to Supabase.
-- [ ] Editing notes, duration, or start/end times in `pt-edit-session-modal` updates the session's `updated_at` timestamp and syncs changes to Supabase.
-- [ ] Deleting a session in `pt-edit-session-modal` or `pt-data-view` assigns a tombstone with `deleted_at = now()`, pushes it to Supabase, and prunes it from local storage across all devices.
-- [ ] Sessions recorded while disconnected from the internet are held locally and automatically pushed to the cloud upon the next successful connection.
+- [x] Supabase schema and indexes support querying tombstone rows where `deleted_at IS NOT NULL`.
+- [x] Finishing a live stopwatch timer in `pt-main-view` generates a completed session and triggers an optimistic background sync to Supabase.
+- [x] Editing notes, duration, or start/end times in `pt-edit-session-modal` updates the session's `updated_at` timestamp and syncs changes to Supabase.
+- [x] Deleting a session in `pt-edit-session-modal` or `pt-data-view` assigns a tombstone with `deleted_at = now()`, pushes it to Supabase, and prunes it from local storage across all devices.
+- [x] Sessions recorded while disconnected from the internet are held locally and automatically pushed to the cloud upon the next successful connection.

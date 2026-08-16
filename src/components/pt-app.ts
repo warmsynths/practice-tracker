@@ -2,11 +2,13 @@ import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { TabType, Instrument, Session, ActiveSession, AppSettings, SyncStatus } from '../types';
 import { practiceStore } from '../store/practice-store';
+import { syncCoordinator } from '../services/sync-coordinator';
 import { commonStyles } from '../styles/shared-styles';
 
 import './views/pt-main-view';
 import './views/pt-kit-view';
 import './views/pt-data-view';
+import './common/pt-sync-pill';
 import './modals/pt-manual-entry-modal';
 import './modals/pt-edit-session-modal';
 import './modals/pt-edit-instrument-modal';
@@ -77,6 +79,12 @@ export class PtApp extends LitElement {
         font-weight: 500;
       }
 
+      .header-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
       .settings-icon-btn {
         background: transparent;
         border: none;
@@ -138,6 +146,8 @@ export class PtApp extends LitElement {
   @state() private activeSession: ActiveSession | null = null;
   @state() private settings: AppSettings = { soundEnabled: true, hapticsEnabled: true };
   @state() private syncStatus: SyncStatus = 'local';
+  @state() private lastSyncedAt: string | null = null;
+  @state() private syncErrorMessage: string | null = null;
   @state() private now: number = Date.now();
 
   // Modals
@@ -159,6 +169,8 @@ export class PtApp extends LitElement {
       this.refreshState();
     });
 
+    syncCoordinator.start();
+
     this.timerInterval = window.setInterval(() => {
       if (this.activeSession) {
         this.now = Date.now();
@@ -170,6 +182,7 @@ export class PtApp extends LitElement {
     super.disconnectedCallback();
     if (this.unsubscribeStore) this.unsubscribeStore();
     if (this.timerInterval) clearInterval(this.timerInterval);
+    syncCoordinator.stop();
   }
 
   private refreshState() {
@@ -178,6 +191,8 @@ export class PtApp extends LitElement {
     this.activeSession = practiceStore.getActiveSession();
     this.settings = practiceStore.getSettings();
     this.syncStatus = practiceStore.getSyncStatus();
+    this.lastSyncedAt = practiceStore.getLastSyncedAt();
+    this.syncErrorMessage = practiceStore.getSyncErrorMessage();
   }
 
   // --- Handlers ---
@@ -266,16 +281,24 @@ export class PtApp extends LitElement {
               <span>${todayDateLabel}</span>
               <span>${todayDayName}</span>
             </div>
-            <button
-              class="settings-icon-btn"
-              title="Settings & Backups"
-              @click=${() => (this.settingsModalOpen = true)}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="3"></circle>
-                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-              </svg>
-            </button>
+            <div class="header-actions">
+              <pt-sync-pill
+                .syncStatus=${this.syncStatus}
+                .lastSyncedAt=${this.lastSyncedAt}
+                .errorMessage=${this.syncErrorMessage}
+                @open-settings=${() => (this.settingsModalOpen = true)}
+              ></pt-sync-pill>
+              <button
+                class="settings-icon-btn"
+                title="Settings & Backups"
+                @click=${() => (this.settingsModalOpen = true)}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="3"></circle>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+                </svg>
+              </button>
+            </div>
           </div>
 
           <!-- Main Scrollable Content -->

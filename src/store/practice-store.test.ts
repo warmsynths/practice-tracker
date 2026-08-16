@@ -155,4 +155,154 @@ describe('PracticeStore Cloud Sync & Timestamping', () => {
     expect(practiceStore.getLastSyncedAt()).toBe(remoteSyncTime);
     expect(practiceStore.getSyncStatus()).toBe('synced');
   });
+
+  describe('Ticket 02: Instrument Kit Cloud Sync & Palette Propagation', () => {
+    it('assigns updatedAt timestamp when adding, editing, and archiving instruments', () => {
+      practiceStore.updateSettings({ workerUrl: 'https://practice-sync.worker.dev', syncPasscode: 'test' });
+      const syncSpy = vi.spyOn(syncEngine, 'sync');
+
+      // Add instrument
+      const newInst = practiceStore.addInstrument('Mandolin', '#A98F72', 'secondary');
+      expect(newInst.updatedAt).toBe('2026-08-16T10:00:00.000Z');
+      expect(practiceStore.getAllInstruments().some((i) => i.id === newInst.id)).toBe(true);
+      expect(syncSpy).toHaveBeenCalled();
+
+      // Edit instrument
+      vi.advanceTimersByTime(60000);
+      practiceStore.updateInstrument({ ...newInst, color: '#6B7F6E', tier: 'primary' });
+      const updated = practiceStore.getInstrument(newInst.id);
+      expect(updated.color).toBe('#6B7F6E');
+      expect(updated.tier).toBe('primary');
+      expect(updated.updatedAt).toBe('2026-08-16T10:01:00.000Z');
+
+      // Archive instrument with history
+      practiceStore.logManualSession(newInst.id, new Date('2026-08-16T10:00:00.000Z'), 15);
+      vi.advanceTimersByTime(60000);
+      practiceStore.removeInstrument(newInst.id);
+      const archived = practiceStore.getInstrument(newInst.id);
+      expect(archived.archived).toBe(true);
+      expect(archived.updatedAt).toBe('2026-08-16T10:02:00.000Z');
+      expect(practiceStore.getActiveInstruments().some((i) => i.id === newInst.id)).toBe(false);
+    });
+
+    it('creates an instrument tombstone when removing an instrument without history', () => {
+      const tempInst = practiceStore.addInstrument('Temporary Banjo', '#7D6E7F', 'secondary');
+      expect(practiceStore.getAllInstruments().some((i) => i.id === tempInst.id)).toBe(true);
+
+      practiceStore.removeInstrument(tempInst.id);
+      expect(practiceStore.getAllInstruments().some((i) => i.id === tempInst.id)).toBe(false);
+
+      const savedTombstones = JSON.parse(localStorage.getItem('ptTombstonesV1') || '[]');
+      expect(savedTombstones.some((t: any) => t.id === tempInst.id && t.type === 'instrument')).toBe(true);
+    });
+
+    it('reconciles remote instruments and applies remote instrument tombstones', async () => {
+      vi.spyOn(syncEngine, 'sync').mockResolvedValue({
+        syncedAt: '2026-08-16T12:00:00.000Z',
+        instruments: [
+          {
+            id: 'synthesizer',
+            name: 'Synthesizer',
+            color: '#4A5568',
+            tier: 'primary',
+            archived: false,
+            updatedAt: '2026-08-16T11:00:00.000Z',
+          },
+        ],
+        sessions: [],
+        tombstones: [
+          {
+            id: 'drumming',
+            type: 'instrument',
+            deletedAt: '2026-08-16T11:30:00.000Z',
+          },
+        ],
+      });
+
+      await practiceStore.syncWithCloud(true);
+
+      // Verify remote synthesizer added
+      const synth = practiceStore.getInstrument('synthesizer');
+      expect(synth.name).toBe('Synthesizer');
+      expect(synth.tier).toBe('primary');
+
+      // Verify remote tombstone removed drumming
+      expect(practiceStore.getAllInstruments().some((i) => i.id === 'drumming')).toBe(false);
+    });
+  });
+
+  describe('Ticket 03: Live Timer Completion, Session Deletions & Tombstones', () => {
+    it('finishing a live stopwatch timer creates a session and triggers cloud sync', () => {
+      practiceStore.updateSettings({ workerUrl: 'https://practice-sync.worker.dev', syncPasscode: 'test' });
+      const syncSpy = vi.spyOn(syncEngine, 'sync');
+
+      // Start live timer
+      practiceStore.startSession('guitar');
+      expect(practiceStore.getActiveSession()).toEqual({
+        instrumentId: 'guitar',
+        startedAt: new Date('2026-08-16T10:00:00.000Z').getTime(),
+      });
+
+      // Advance by 32 minutes
+      vi.advanceTimersByTime(32 * 60000);
+
+      // End session
+      const completed = practiceStore.endSession();
+      expect(completed).not.toBeNull();
+      expect(completed?.duration).toBe(32);
+      expect(completed?.instrumentId).toBe('guitar');
+      expect(completed?.updatedAt).toBe('2026-08-16T10:32:00.000Z');
+      expect(practiceStore.getActiveSession()).toBeNull();
+      expect(syncSpy).toHaveBeenCalled();
+    });
+
+    it('discarding a live timer resets active session without saving or syncing', () => {
+      practiceStore.updateSettings({ workerUrl: 'https://practice-sync.worker.dev', syncPasscode: 'test' });
+      const syncSpy = vi.spyOn(syncEngine, 'sync');
+
+      practiceStore.startSession('piano');
+      expect(practiceStore.getActiveSession()).not.toBeNull();
+
+      practiceStore.discardSession();
+      expect(practiceStore.getActiveSession()).toBeNull();
+      expect(syncSpy).not.toHaveBeenCalled();
+    });
+
+    it('holds offline changes locally and pushes all pending changes upon reconnection', async () => {
+      practiceStore.updateSettings({ workerUrl: 'https://practice-sync.worker.dev', syncPasscode: 'test' });
+      
+      // Simulate offline network failure
+      vi.spyOn(syncEngine, 'sync').mockRejectedValue(new Error('Network error: Failed to fetch'));
+
+      const offlineSession = practiceStore.logManualSession('bass', new Date('2026-08-16T10:00:00.000Z'), 45, 'Offline practice');
+      practiceStore.deleteSession('guitar'); // deleted guitar
+
+      // Sync fails while offline
+      const failedSync = await practiceStore.syncWithCloud(true);
+      expect(failedSync.success).toBe(false);
+      expect(practiceStore.getSyncStatus()).toBe('error');
+
+      // Check that data remains locally
+      expect(practiceStore.getSessions().some((s) => s.id === offlineSession.id)).toBe(true);
+
+      // Restore sync connectivity
+      let capturedPayload: any = null;
+      vi.spyOn(syncEngine, 'sync').mockImplementation(async (_url, _secret, payload) => {
+        capturedPayload = payload;
+        return {
+          syncedAt: '2026-08-16T10:15:00.000Z',
+          instruments: [],
+          sessions: [],
+          tombstones: [],
+        };
+      });
+
+      const recoverySync = await practiceStore.syncWithCloud(false);
+      expect(recoverySync.success).toBe(true);
+      expect(practiceStore.getSyncStatus()).toBe('synced');
+      expect(capturedPayload).not.toBeNull();
+      expect(capturedPayload.sessions.some((s: any) => s.id === offlineSession.id)).toBe(true);
+      expect(capturedPayload.tombstones.some((t: any) => t.id === 'guitar')).toBe(true);
+    });
+  });
 });

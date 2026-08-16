@@ -77,3 +77,20 @@ export function calculateStreak(sessions: Session[]): { currentStreak: number; c
 
   return { currentStreak, consistency30d };
 }
+
+export function formatRelativeTime(isoString: string | null | undefined): string {
+  if (!isoString) return 'Never';
+  const timestamp = new Date(isoString).getTime();
+  if (isNaN(timestamp)) return 'Never';
+
+  const elapsedSec = Math.floor((Date.now() - timestamp) / 1000);
+  if (elapsedSec < 10) return 'Just now';
+  if (elapsedSec < 60) return `${elapsedSec}s ago`;
+  const elapsedMin = Math.floor(elapsedSec / 60);
+  if (elapsedMin < 60) return `${elapsedMin}m ago`;
+  const elapsedHours = Math.floor(elapsedMin / 60);
+  if (elapsedHours < 24) return `${elapsedHours}h ago`;
+  const elapsedDays = Math.floor(elapsedHours / 24);
+  if (elapsedDays === 1) return 'Yesterday';
+  return `${elapsedDays}d ago`;
+}
