@@ -4,17 +4,21 @@ import {
   ActiveSession,
   AppSettings,
   InstrumentTier,
+  SyncStatus,
+  Tombstone,
+  SyncRequestPayload,
 } from '../types';
 import { slug } from '../utils/chart-utils';
 import { addDays, startOfDay } from '../utils/date-utils';
 import { playStartSound, playEndSound, playClickSound, triggerHaptic } from '../utils/audio-utils';
+import { syncEngine, TestConnectionResult } from '../services/sync-engine';
 
 export const DEFAULT_INSTRUMENTS: Instrument[] = [
-  { id: 'guitar', name: 'Guitar', color: '#6B7F6E', tier: 'primary' },
-  { id: 'piano', name: 'Piano', color: '#8A7B94', tier: 'primary' },
-  { id: 'acoustic', name: 'Acoustic Guitar', color: '#9FAF95', tier: 'secondary' },
-  { id: 'bass', name: 'Bass', color: '#7D6E7F', tier: 'secondary' },
-  { id: 'drumming', name: 'Finger Drumming', color: '#A98F72', tier: 'secondary' },
+  { id: 'guitar', name: 'Guitar', color: '#6B7F6E', tier: 'primary', updatedAt: new Date(0).toISOString() },
+  { id: 'piano', name: 'Piano', color: '#8A7B94', tier: 'primary', updatedAt: new Date(0).toISOString() },
+  { id: 'acoustic', name: 'Acoustic Guitar', color: '#9FAF95', tier: 'secondary', updatedAt: new Date(0).toISOString() },
+  { id: 'bass', name: 'Bass', color: '#7D6E7F', tier: 'secondary', updatedAt: new Date(0).toISOString() },
+  { id: 'drumming', name: 'Finger Drumming', color: '#A98F72', tier: 'secondary', updatedAt: new Date(0).toISOString() },
 ];
 
 export const FALLBACK_INSTRUMENT: Instrument = {
@@ -23,6 +27,7 @@ export const FALLBACK_INSTRUMENT: Instrument = {
   color: '#C3C1B7',
   tier: 'secondary',
   archived: true,
+  updatedAt: new Date(0).toISOString(),
 };
 
 const STORAGE_KEYS = {
@@ -30,13 +35,43 @@ const STORAGE_KEYS = {
   INSTRUMENTS: 'ptInstrumentsV1',
   ACTIVE: 'ptActiveSessionV1',
   SETTINGS: 'ptSettingsV1',
+  TOMBSTONES: 'ptTombstonesV1',
 };
+
+function getEnvSyncUrl(): string | undefined {
+  try {
+    return (import.meta as any).env?.VITE_SYNC_URL || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function getEnvSyncPasscode(): string | undefined {
+  try {
+    return (import.meta as any).env?.VITE_SYNC_PASSCODE || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function getStorage(): Storage | null {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) return window.localStorage;
+    if (typeof localStorage !== 'undefined') return localStorage;
+  } catch {
+    // ignore
+  }
+  return null;
+}
 
 class PracticeStore {
   private instruments: Instrument[] = [];
   private sessions: Session[] = [];
   private activeSession: ActiveSession | null = null;
   private settings: AppSettings = { soundEnabled: true, hapticsEnabled: true };
+  private tombstones: Tombstone[] = [];
+  private syncStatus: SyncStatus = 'local';
+  private syncErrorMessage: string | null = null;
   private listeners: Set<() => void> = new Set();
 
   constructor() {
@@ -54,13 +89,36 @@ class PracticeStore {
     this.listeners.forEach((fn) => fn());
   }
 
+  public getEffectiveWorkerUrl(): string | undefined {
+    return this.settings.workerUrl || getEnvSyncUrl();
+  }
+
+  public getEffectiveSyncPasscode(): string | undefined {
+    return this.settings.syncPasscode || getEnvSyncPasscode();
+  }
+
+  public isCloudSyncConfigured(): boolean {
+    return !!this.getEffectiveWorkerUrl();
+  }
+
   private loadFromStorage(): void {
+    const storage = getStorage();
+    if (!storage) {
+      this.instruments = [...DEFAULT_INSTRUMENTS];
+      this.sessions = [];
+      this.syncStatus = 'local';
+      return;
+    }
+
     try {
-      const savedInst = localStorage.getItem(STORAGE_KEYS.INSTRUMENTS);
+      const savedInst = storage.getItem(STORAGE_KEYS.INSTRUMENTS);
       if (savedInst) {
         const parsed = JSON.parse(savedInst);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          this.instruments = parsed;
+          this.instruments = parsed.map((i: Instrument) => ({
+            ...i,
+            updatedAt: i.updatedAt || new Date(0).toISOString(),
+          }));
         } else {
           this.instruments = [...DEFAULT_INSTRUMENTS];
         }
@@ -69,11 +127,14 @@ class PracticeStore {
         this.persistInstruments();
       }
 
-      const savedSessions = localStorage.getItem(STORAGE_KEYS.SESSIONS);
+      const savedSessions = storage.getItem(STORAGE_KEYS.SESSIONS);
       if (savedSessions) {
         const parsed = JSON.parse(savedSessions);
         if (Array.isArray(parsed)) {
-          this.sessions = parsed;
+          this.sessions = parsed.map((s: Session) => ({
+            ...s,
+            updatedAt: s.updatedAt || new Date(0).toISOString(),
+          }));
         } else {
           this.sessions = [];
         }
@@ -81,7 +142,7 @@ class PracticeStore {
         this.sessions = [];
       }
 
-      const savedActive = localStorage.getItem(STORAGE_KEYS.ACTIVE);
+      const savedActive = storage.getItem(STORAGE_KEYS.ACTIVE);
       if (savedActive) {
         const parsed = JSON.parse(savedActive);
         if (parsed && parsed.instrumentId && parsed.startedAt) {
@@ -89,20 +150,37 @@ class PracticeStore {
         }
       }
 
-      const savedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+      const savedTombstones = storage.getItem(STORAGE_KEYS.TOMBSTONES);
+      if (savedTombstones) {
+        const parsed = JSON.parse(savedTombstones);
+        if (Array.isArray(parsed)) {
+          this.tombstones = parsed;
+        }
+      }
+
+      const savedSettings = storage.getItem(STORAGE_KEYS.SETTINGS);
       if (savedSettings) {
         this.settings = { ...this.settings, ...JSON.parse(savedSettings) };
+      }
+
+      // Determine initial sync status
+      if (this.isCloudSyncConfigured()) {
+        this.syncStatus = typeof window !== 'undefined' && typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'synced';
+      } else {
+        this.syncStatus = 'local';
       }
     } catch (e) {
       console.error('Error loading practice store from storage:', e);
       this.instruments = [...DEFAULT_INSTRUMENTS];
       this.sessions = [];
+      this.syncStatus = 'local';
     }
   }
 
   private persistInstruments(): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.INSTRUMENTS, JSON.stringify(this.instruments));
+      const storage = getStorage();
+      storage?.setItem(STORAGE_KEYS.INSTRUMENTS, JSON.stringify(this.instruments));
     } catch (e) {
       console.error('Error saving instruments:', e);
     }
@@ -110,7 +188,8 @@ class PracticeStore {
 
   private persistSessions(): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(this.sessions));
+      const storage = getStorage();
+      storage?.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(this.sessions));
     } catch (e) {
       console.error('Error saving sessions:', e);
     }
@@ -118,10 +197,12 @@ class PracticeStore {
 
   private persistActive(): void {
     try {
+      const storage = getStorage();
+      if (!storage) return;
       if (this.activeSession) {
-        localStorage.setItem(STORAGE_KEYS.ACTIVE, JSON.stringify(this.activeSession));
+        storage.setItem(STORAGE_KEYS.ACTIVE, JSON.stringify(this.activeSession));
       } else {
-        localStorage.removeItem(STORAGE_KEYS.ACTIVE);
+        storage.removeItem(STORAGE_KEYS.ACTIVE);
       }
     } catch (e) {
       console.error('Error saving active session:', e);
@@ -130,9 +211,19 @@ class PracticeStore {
 
   private persistSettings(): void {
     try {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
+      const storage = getStorage();
+      storage?.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(this.settings));
     } catch (e) {
       console.error('Error saving settings:', e);
+    }
+  }
+
+  private persistTombstones(): void {
+    try {
+      const storage = getStorage();
+      storage?.setItem(STORAGE_KEYS.TOMBSTONES, JSON.stringify(this.tombstones));
+    } catch (e) {
+      console.error('Error saving tombstones:', e);
     }
   }
 
@@ -161,6 +252,18 @@ class PracticeStore {
     return { ...this.settings };
   }
 
+  public getSyncStatus(): SyncStatus {
+    return this.syncStatus;
+  }
+
+  public getSyncErrorMessage(): string | null {
+    return this.syncErrorMessage;
+  }
+
+  public getLastSyncedAt(): string | null {
+    return this.settings.lastSyncedAt || null;
+  }
+
   // --- Active Session Actions ---
   public startSession(instrumentId: string): void {
     if (this.activeSession) return;
@@ -178,13 +281,15 @@ class PracticeStore {
     if (!this.activeSession) return null;
     const now = Date.now();
     const elapsedMinutes = Math.max(1, Math.round((now - this.activeSession.startedAt) / 60000));
+    const nowIso = new Date(now).toISOString();
 
     const newSession: Session = {
       id: 's-' + Math.random().toString(36).slice(2, 9) + '-' + Date.now().toString(36),
       instrumentId: this.activeSession.instrumentId,
       start: new Date(this.activeSession.startedAt).toISOString(),
-      end: new Date(now).toISOString(),
+      end: nowIso,
       duration: elapsedMinutes,
+      updatedAt: nowIso,
     };
 
     this.sessions = [newSession, ...this.sessions];
@@ -195,6 +300,10 @@ class PracticeStore {
     playEndSound(this.settings.soundEnabled);
     triggerHaptic([30, 50, 30], this.settings.hapticsEnabled);
     this.notify();
+
+    // Trigger cloud sync asynchronously
+    this.triggerBackgroundSync();
+
     return newSession;
   }
 
@@ -214,6 +323,7 @@ class PracticeStore {
     notes?: string
   ): Session {
     const end = new Date(start.getTime() + Math.max(1, durationMinutes) * 60000);
+    const nowIso = new Date().toISOString();
     const newSession: Session = {
       id: 'm-' + Math.random().toString(36).slice(2, 9) + '-' + Date.now().toString(36),
       instrumentId,
@@ -221,6 +331,7 @@ class PracticeStore {
       end: end.toISOString(),
       duration: Math.max(1, Math.round(durationMinutes)),
       notes: notes?.trim() || undefined,
+      updatedAt: nowIso,
     };
 
     this.sessions = [newSession, ...this.sessions];
@@ -228,45 +339,70 @@ class PracticeStore {
     playEndSound(this.settings.soundEnabled);
     triggerHaptic(25, this.settings.hapticsEnabled);
     this.notify();
+
+    // Trigger cloud sync asynchronously
+    this.triggerBackgroundSync();
+
     return newSession;
   }
 
   public updateSession(updated: Session): void {
-    this.sessions = this.sessions.map((s) => (s.id === updated.id ? updated : s));
+    const nowIso = new Date().toISOString();
+    const sessionWithStamp: Session = { ...updated, updatedAt: nowIso };
+    this.sessions = this.sessions.map((s) => (s.id === updated.id ? sessionWithStamp : s));
     this.persistSessions();
     playClickSound(this.settings.soundEnabled);
     this.notify();
+
+    this.triggerBackgroundSync();
   }
 
   public deleteSession(sessionId: string): void {
+    const nowIso = new Date().toISOString();
     this.sessions = this.sessions.filter((s) => s.id !== sessionId);
+    this.tombstones = [
+      ...this.tombstones.filter((t) => t.id !== sessionId),
+      { id: sessionId, type: 'session', deletedAt: nowIso },
+    ];
     this.persistSessions();
+    this.persistTombstones();
     playClickSound(this.settings.soundEnabled);
     this.notify();
+
+    this.triggerBackgroundSync();
   }
 
   // --- Instrument Management ---
   public addInstrument(name: string, color: string, tier: InstrumentTier): Instrument {
     const trimmed = name.trim();
     const id = slug(trimmed) + '-' + Math.random().toString(36).slice(2, 6);
+    const nowIso = new Date().toISOString();
     const newInst: Instrument = {
       id,
       name: trimmed,
       color,
       tier,
+      updatedAt: nowIso,
     };
     this.instruments = [...this.instruments, newInst];
     this.persistInstruments();
     playClickSound(this.settings.soundEnabled);
     this.notify();
+
+    this.triggerBackgroundSync();
+
     return newInst;
   }
 
   public updateInstrument(updated: Instrument): void {
-    this.instruments = this.instruments.map((i) => (i.id === updated.id ? updated : i));
+    const nowIso = new Date().toISOString();
+    const instWithStamp: Instrument = { ...updated, updatedAt: nowIso };
+    this.instruments = this.instruments.map((i) => (i.id === updated.id ? instWithStamp : i));
     this.persistInstruments();
     playClickSound(this.settings.soundEnabled);
     this.notify();
+
+    this.triggerBackgroundSync();
   }
 
   public removeInstrument(id: string): void {
@@ -280,19 +416,192 @@ class PracticeStore {
       this.persistActive();
     }
 
-    // Check if there are sessions for this instrument
+    const nowIso = new Date().toISOString();
     const hasHistory = this.sessions.some((s) => s.instrumentId === id);
     if (hasHistory) {
       // Soft-delete per ADR 0002 to preserve history
       this.instruments = this.instruments.map((i) =>
-        i.id === id ? { ...i, archived: true } : i
+        i.id === id ? { ...i, archived: true, updatedAt: nowIso } : i
       );
     } else {
       this.instruments = this.instruments.filter((i) => i.id !== id);
+      this.tombstones = [
+        ...this.tombstones.filter((t) => t.id !== id),
+        { id, type: 'instrument', deletedAt: nowIso },
+      ];
+      this.persistTombstones();
     }
 
     this.persistInstruments();
     playClickSound(this.settings.soundEnabled);
+    this.notify();
+
+    this.triggerBackgroundSync();
+  }
+
+  // --- Cloud Sync Implementation ---
+  public async testConnection(workerUrl?: string, passcode?: string): Promise<TestConnectionResult> {
+    const targetUrl = workerUrl !== undefined ? workerUrl : this.settings.workerUrl || '';
+    const targetPasscode = passcode !== undefined ? passcode : this.settings.syncPasscode;
+    return syncEngine.testConnection(targetUrl, targetPasscode);
+  }
+
+  private currentSyncPromise: Promise<{ success: boolean; message?: string }> | null = null;
+
+  public triggerBackgroundSync(): void {
+    if (this.isCloudSyncConfigured() && !this.currentSyncPromise) {
+      this.syncWithCloud().catch((err) => {
+        console.warn('Background sync error:', err);
+      });
+    }
+  }
+
+  public async syncWithCloud(forceAll = false): Promise<{ success: boolean; message?: string }> {
+    if (this.currentSyncPromise) {
+      if (!forceAll) {
+        return this.currentSyncPromise;
+      }
+      await this.currentSyncPromise.catch(() => {});
+    }
+
+    const workerUrl = this.getEffectiveWorkerUrl();
+    const syncPasscode = this.getEffectiveSyncPasscode();
+
+    if (!workerUrl) {
+      this.syncStatus = 'local';
+      this.notify();
+      return { success: true, message: 'Local only mode (no worker configured)' };
+    }
+
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined' && navigator.onLine === false) {
+      this.syncStatus = 'offline';
+      this.notify();
+      return { success: false, message: 'Device is offline' };
+    }
+
+    this.currentSyncPromise = this.performSync(workerUrl, syncPasscode, forceAll);
+    try {
+      return await this.currentSyncPromise;
+    } finally {
+      this.currentSyncPromise = null;
+    }
+  }
+
+  private async performSync(
+    workerUrl: string,
+    syncPasscode: string | undefined,
+    forceAll: boolean
+  ): Promise<{ success: boolean; message?: string }> {
+    this.syncStatus = 'syncing';
+    this.syncErrorMessage = null;
+    this.notify();
+
+    try {
+      const lastSynced = forceAll ? null : this.settings.lastSyncedAt || null;
+      const sentTombstoneIds = new Set(this.tombstones.map((t) => t.id));
+
+      // Gather changes to push
+      const instrumentsToPush = forceAll || !lastSynced
+        ? this.instruments
+        : this.instruments.filter((i) => !i.updatedAt || i.updatedAt > lastSynced);
+
+      const sessionsToPush = forceAll || !lastSynced
+        ? this.sessions
+        : this.sessions.filter((s) => !s.updatedAt || s.updatedAt > lastSynced);
+
+      const payload: SyncRequestPayload = {
+        lastSyncedAt: lastSynced,
+        instruments: instrumentsToPush,
+        sessions: sessionsToPush,
+        tombstones: [...this.tombstones],
+      };
+
+      const response = await syncEngine.sync(
+        workerUrl,
+        syncPasscode,
+        payload
+      );
+
+      // --- Last-Write-Wins Reconciliation ---
+
+      // 1. Reconcile Instruments
+      const currentInstMap = new Map<string, Instrument>(this.instruments.map((i) => [i.id, i]));
+      for (const remoteInst of response.instruments) {
+        const local = currentInstMap.get(remoteInst.id);
+        if (!local) {
+          currentInstMap.set(remoteInst.id, remoteInst);
+        } else {
+          const localUpdated = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+          const remoteUpdated = remoteInst.updatedAt ? new Date(remoteInst.updatedAt).getTime() : 0;
+          if (remoteUpdated >= localUpdated) {
+            currentInstMap.set(remoteInst.id, { ...local, ...remoteInst });
+          }
+        }
+      }
+
+      // 2. Reconcile Sessions
+      const currentSessMap = new Map<string, Session>(this.sessions.map((s) => [s.id, s]));
+      for (const remoteSess of response.sessions) {
+        const local = currentSessMap.get(remoteSess.id);
+        if (!local) {
+          currentSessMap.set(remoteSess.id, remoteSess);
+        } else {
+          const localUpdated = local.updatedAt ? new Date(local.updatedAt).getTime() : 0;
+          const remoteUpdated = remoteSess.updatedAt ? new Date(remoteSess.updatedAt).getTime() : 0;
+          if (remoteUpdated >= localUpdated) {
+            currentSessMap.set(remoteSess.id, { ...local, ...remoteSess });
+          }
+        }
+      }
+
+      // 3. Apply Remote Tombstones
+      for (const tomb of response.tombstones) {
+        if (tomb.type === 'instrument') {
+          currentInstMap.delete(tomb.id);
+        } else if (tomb.type === 'session') {
+          currentSessMap.delete(tomb.id);
+        }
+      }
+
+      // Update in-memory state
+      this.instruments = Array.from(currentInstMap.values());
+      this.sessions = Array.from(currentSessMap.values()).sort(
+        (a, b) => new Date(b.start).getTime() - new Date(a.start).getTime()
+      );
+
+      // Remove successfully synced tombstones
+      this.tombstones = this.tombstones.filter((t) => !sentTombstoneIds.has(t.id));
+
+      // Update sync timestamps and status
+      this.settings.lastSyncedAt = response.syncedAt;
+      this.syncStatus = 'synced';
+      this.syncErrorMessage = null;
+
+      // Persist everything
+      this.persistInstruments();
+      this.persistSessions();
+      this.persistTombstones();
+      this.persistSettings();
+
+      this.notify();
+      return { success: true };
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.error('PracticeStore sync failed:', errMsg);
+      this.syncStatus = 'error';
+      this.syncErrorMessage = errMsg;
+      this.notify();
+      return { success: false, message: errMsg };
+    }
+  }
+
+  public disconnectCloudSync(): void {
+    this.settings.workerUrl = undefined;
+    this.settings.syncPasscode = undefined;
+    this.settings.lastSyncedAt = undefined;
+    this.syncStatus = 'local';
+    this.syncErrorMessage = null;
+    this.persistSettings();
     this.notify();
   }
 
@@ -300,6 +609,13 @@ class PracticeStore {
   public updateSettings(partial: Partial<AppSettings>): void {
     this.settings = { ...this.settings, ...partial };
     this.persistSettings();
+
+    if (this.settings.workerUrl) {
+      this.syncStatus = 'synced';
+    } else {
+      this.syncStatus = 'local';
+    }
+
     this.notify();
   }
 
@@ -322,12 +638,18 @@ class PracticeStore {
       }
 
       if (Array.isArray(parsed.instruments) && parsed.instruments.length > 0) {
-        this.instruments = parsed.instruments;
+        this.instruments = parsed.instruments.map((i: Instrument) => ({
+          ...i,
+          updatedAt: i.updatedAt || new Date().toISOString(),
+        }));
         this.persistInstruments();
       }
 
       if (Array.isArray(parsed.sessions)) {
-        this.sessions = parsed.sessions;
+        this.sessions = parsed.sessions.map((s: Session) => ({
+          ...s,
+          updatedAt: s.updatedAt || new Date().toISOString(),
+        }));
         this.persistSessions();
       }
 
@@ -340,6 +662,10 @@ class PracticeStore {
       this.persistActive();
 
       this.notify();
+
+      // If cloud sync configured, trigger sync
+      this.triggerBackgroundSync();
+
       return { success: true, message: 'Backup successfully restored.' };
     } catch (e) {
       return { success: false, message: 'Failed to parse JSON file: ' + String(e) };
@@ -352,6 +678,7 @@ class PracticeStore {
 
     const today = startOfDay(new Date());
     const generated: Session[] = [];
+    const nowIso = new Date().toISOString();
 
     for (let i = 33; i >= 1; i--) {
       const day = addDays(today, -i);
@@ -373,6 +700,7 @@ class PracticeStore {
             start: start.toISOString(),
             end: end.toISOString(),
             duration: dur,
+            updatedAt: nowIso,
           });
           hour += 1;
         });
@@ -389,6 +717,7 @@ class PracticeStore {
             start: start.toISOString(),
             end: end.toISOString(),
             duration: dur,
+            updatedAt: nowIso,
           });
         }
       }
@@ -403,6 +732,7 @@ class PracticeStore {
       start: gStart.toISOString(),
       end: new Date(gStart.getTime() + 22 * 60000).toISOString(),
       duration: 22,
+      updatedAt: nowIso,
     });
 
     const pStart = new Date(today);
@@ -413,6 +743,7 @@ class PracticeStore {
       start: pStart.toISOString(),
       end: new Date(pStart.getTime() + 18 * 60000).toISOString(),
       duration: 18,
+      updatedAt: nowIso,
     });
 
     this.sessions = generated;
@@ -420,14 +751,18 @@ class PracticeStore {
     this.persistSessions();
     this.persistActive();
     this.notify();
+
+    this.triggerBackgroundSync();
   }
 
   public clearAllData(): void {
     this.instruments = [...DEFAULT_INSTRUMENTS];
     this.sessions = [];
     this.activeSession = null;
+    this.tombstones = [];
     this.persistInstruments();
     this.persistSessions();
+    this.persistTombstones();
     this.persistActive();
     this.notify();
   }

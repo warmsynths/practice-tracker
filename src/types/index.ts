@@ -6,6 +6,8 @@ export interface Instrument {
   color: string;
   tier: InstrumentTier;
   archived?: boolean;
+  updatedAt?: string;
+  deletedAt?: string;
 }
 
 export interface Session {
@@ -15,6 +17,14 @@ export interface Session {
   end: string;   // ISO string
   duration: number; // in minutes (rounded integer)
   notes?: string;
+  updatedAt?: string;
+  deletedAt?: string;
+}
+
+export interface Tombstone {
+  id: string;
+  type: 'session' | 'instrument';
+  deletedAt: string;
 }
 
 export interface ActiveSession {
@@ -22,9 +32,28 @@ export interface ActiveSession {
   startedAt: number; // Epoch timestamp ms
 }
 
+export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'error' | 'local';
+
 export interface AppSettings {
   soundEnabled: boolean;
   hapticsEnabled: boolean;
+  workerUrl?: string;
+  syncPasscode?: string;
+  lastSyncedAt?: string;
+}
+
+export interface SyncRequestPayload {
+  lastSyncedAt: string | null;
+  instruments?: Instrument[];
+  sessions?: Session[];
+  tombstones?: Tombstone[];
+}
+
+export interface SyncResponsePayload {
+  syncedAt: string;
+  instruments: Instrument[];
+  sessions: Session[];
+  tombstones: Tombstone[];
 }
 
 export type TabType = 'main' | 'kit' | 'data';

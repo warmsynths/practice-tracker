@@ -1,7 +1,8 @@
 import { LitElement, html, css } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
-import { AppSettings } from '../../types';
+import { customElement, property, state } from 'lit/decorators.js';
+import { AppSettings, SyncStatus } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
+import { practiceStore } from '../../store/practice-store';
 
 @customElement('pt-settings-modal')
 export class PtSettingsModal extends LitElement {
@@ -15,6 +16,14 @@ export class PtSettingsModal extends LitElement {
         padding: 12px 0;
         border-bottom: 1px solid #E1E1DB;
       }
+      .setting-item:last-child {
+        border-bottom: none;
+      }
+      .setting-info {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
       .setting-title {
         font-size: 14px;
         font-weight: 700;
@@ -22,13 +31,13 @@ export class PtSettingsModal extends LitElement {
       .setting-desc {
         font-size: 11px;
         color: #767668;
-        margin-top: 2px;
       }
       .switch {
         position: relative;
         display: inline-block;
         width: 44px;
         height: 24px;
+        flex-shrink: 0;
       }
       .switch input {
         opacity: 0;
@@ -72,6 +81,77 @@ export class PtSettingsModal extends LitElement {
         margin-top: 18px;
         margin-bottom: 8px;
       }
+      .sync-card {
+        background: #F4F3EF;
+        border: 1px solid #E1E1DB;
+        border-radius: 12px;
+        padding: 14px 16px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 6px;
+      }
+      .sync-status-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        margin-top: 4px;
+      }
+      .sync-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        display: inline-block;
+      }
+      .sync-dot.synced {
+        background: #3B8A44;
+      }
+      .sync-dot.syncing {
+        background: #D48827;
+        animation: pulse 1s infinite ease-in-out;
+      }
+      .sync-dot.offline {
+        background: #8F8D88;
+      }
+      .sync-dot.error {
+        background: #C0392B;
+      }
+      .sync-dot.local {
+        background: #A8A69E;
+      }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(1.2); }
+      }
+      .sync-timestamp {
+        font-size: 11px;
+        color: #767668;
+        margin-top: 2px;
+      }
+      .btn-sync {
+        font-size: 12px;
+        font-weight: 700;
+        padding: 8px 14px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 1px solid #D4D3CB;
+        background: #FFFFFF;
+        color: #23241F;
+        transition: all 0.15s ease;
+        flex-shrink: 0;
+      }
+      .btn-sync:hover:not(:disabled) {
+        background: #23241F;
+        color: #FFFFFF;
+        border-color: #23241F;
+      }
+      .btn-sync:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
       .btn-grid {
         display: flex;
         flex-direction: column;
@@ -85,7 +165,10 @@ export class PtSettingsModal extends LitElement {
   ];
 
   @property({ type: Object }) settings: AppSettings = { soundEnabled: true, hapticsEnabled: true };
+  @property({ type: String }) syncStatus: SyncStatus = 'local';
   @property({ type: Boolean }) open = false;
+
+  @state() private isSyncing = false;
 
   private handleSoundToggle(e: Event) {
     const checked = (e.target as HTMLInputElement).checked;
@@ -107,6 +190,15 @@ export class PtSettingsModal extends LitElement {
         composed: true,
       })
     );
+  }
+
+  private async handleSyncNow() {
+    this.isSyncing = true;
+    try {
+      await practiceStore.syncWithCloud(false);
+    } finally {
+      this.isSyncing = false;
+    }
   }
 
   private triggerExport() {
@@ -158,8 +250,46 @@ export class PtSettingsModal extends LitElement {
     this.dispatchEvent(new CustomEvent('close-modal', { bubbles: true, composed: true }));
   }
 
+  private formatLastSync(isoString?: string): string {
+    if (!isoString) return 'Never synced';
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) return 'Never synced';
+
+    const now = Date.now();
+    const diffSec = Math.floor((now - date.getTime()) / 1000);
+
+    if (diffSec < 60) return 'Just now';
+    if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+    if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  }
+
+  private getSyncStatusLabel(): { label: string; dotClass: string } {
+    const isConfigured = practiceStore.isCloudSyncConfigured();
+    if (!isConfigured) {
+      return { label: 'Local storage only', dotClass: 'local' };
+    }
+
+    switch (this.syncStatus) {
+      case 'syncing':
+        return { label: 'Syncing changes...', dotClass: 'syncing' };
+      case 'synced':
+        return { label: 'Cloud backup active', dotClass: 'synced' };
+      case 'offline':
+        return { label: 'Offline (will sync when online)', dotClass: 'offline' };
+      case 'error':
+        return { label: 'Sync paused (connection error)', dotClass: 'error' };
+      default:
+        return { label: 'Local storage only', dotClass: 'local' };
+    }
+  }
+
   render() {
     if (!this.open) return html``;
+
+    const isConfigured = practiceStore.isCloudSyncConfigured();
+    const statusInfo = this.getSyncStatusLabel();
 
     return html`
       <div class="modal-overlay" @click=${(e: Event) => e.target === e.currentTarget && this.close()}>
@@ -169,9 +299,41 @@ export class PtSettingsModal extends LitElement {
             <button class="close-btn" @click=${this.close}>&times;</button>
           </div>
 
+          <!-- Cloud Synchronization -->
+          <div class="section-heading">Cloud Synchronization</div>
+          <div class="sync-card">
+            <div class="setting-info">
+              <div class="setting-title">Auto Cloud Backup</div>
+              <div class="sync-status-row">
+                <span class="sync-dot ${statusInfo.dotClass}"></span>
+                <span>${statusInfo.label}</span>
+              </div>
+              ${isConfigured && this.settings.lastSyncedAt
+                ? html`
+                    <div class="sync-timestamp">
+                      Last synced: ${this.formatLastSync(this.settings.lastSyncedAt)}
+                    </div>
+                  `
+                : html``}
+            </div>
+            ${isConfigured
+              ? html`
+                  <button
+                    type="button"
+                    class="btn-sync"
+                    ?disabled=${this.isSyncing || this.syncStatus === 'syncing'}
+                    @click=${this.handleSyncNow}
+                  >
+                    ${this.isSyncing || this.syncStatus === 'syncing' ? 'Syncing...' : 'Sync Now'}
+                  </button>
+                `
+              : html``}
+          </div>
+
+          <!-- Feedback & Sound -->
           <div class="section-heading">Feedback & Sound</div>
           <div class="setting-item">
-            <div>
+            <div class="setting-info">
               <div class="setting-title">Audio Chimes</div>
               <div class="setting-desc">Acoustic tones on start and completion</div>
             </div>
@@ -186,7 +348,7 @@ export class PtSettingsModal extends LitElement {
           </div>
 
           <div class="setting-item">
-            <div>
+            <div class="setting-info">
               <div class="setting-title">Haptic Vibration</div>
               <div class="setting-desc">Tactile mobile feedback</div>
             </div>
@@ -200,6 +362,7 @@ export class PtSettingsModal extends LitElement {
             </label>
           </div>
 
+          <!-- Data Portability -->
           <div class="section-heading">Data Portability</div>
           <div class="btn-grid">
             <button class="btn btn-secondary" @click=${this.triggerExport}>
@@ -217,6 +380,7 @@ export class PtSettingsModal extends LitElement {
             />
           </div>
 
+          <!-- Demo & Clean Slate -->
           <div class="section-heading">Demo & Clean Slate</div>
           <div class="btn-grid">
             <button class="btn btn-secondary" @click=${this.triggerDemoData}>

@@ -1,6 +1,6 @@
 import { LitElement, html, css } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
-import { TabType, Instrument, Session, ActiveSession, AppSettings } from '../types';
+import { TabType, Instrument, Session, ActiveSession, AppSettings, SyncStatus } from '../types';
 import { practiceStore } from '../store/practice-store';
 import { commonStyles } from '../styles/shared-styles';
 
@@ -137,6 +137,7 @@ export class PtApp extends LitElement {
   @state() private sessions: Session[] = [];
   @state() private activeSession: ActiveSession | null = null;
   @state() private settings: AppSettings = { soundEnabled: true, hapticsEnabled: true };
+  @state() private syncStatus: SyncStatus = 'local';
   @state() private now: number = Date.now();
 
   // Modals
@@ -176,6 +177,7 @@ export class PtApp extends LitElement {
     this.sessions = practiceStore.getSessions();
     this.activeSession = practiceStore.getActiveSession();
     this.settings = practiceStore.getSettings();
+    this.syncStatus = practiceStore.getSyncStatus();
   }
 
   // --- Handlers ---
@@ -378,6 +380,7 @@ export class PtApp extends LitElement {
 
       <pt-settings-modal
         .settings=${this.settings}
+        .syncStatus=${this.syncStatus}
         .open=${this.settingsModalOpen}
         @update-settings=${this.handleUpdateSettings}
         @export-backup=${this.handleExportBackup}
