@@ -109,3 +109,21 @@ export interface KitMetric {
   ringBg: string;
   removable: boolean;
 }
+
+export type InstrumentHeatStatus = 'new' | 'due' | 'hot' | 'warm' | 'cool' | 'cold' | 'overdue';
+
+export interface InstrumentRepetitionState {
+  instrumentId: string;
+  step: number; // 0 (unpracticed), 1 (1d), 2 (3d), 3 (7d), 4 (14d), 5 (30d)
+  maxSteps: number; // 5
+  intervalDays: number; // current target interval: 1, 3, 7, 14, or 30
+  lastPracticedAt: string | null; // ISO string of most recent session
+  nextDueAt: string | null; // ISO string of next due date
+  daysRemaining: number; // >0: due in N days, 0: due today, <0: overdue by N days
+  status: InstrumentHeatStatus;
+  isDueToday: boolean;
+  isOverdue: boolean;
+  cycleCount: number; // number of completed 30d loops
+  label: string; // e.g. "Step 2/5 (3d)"
+}
+

@@ -4,6 +4,8 @@ import { Instrument, Session, ActiveSession } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
 import { arcGradient } from '../../utils/chart-utils';
 import { calculateStreak, formatTimer, isSameDay, startOfDay } from '../../utils/date-utils';
+import { calculateAllInstrumentsRepetition, getHeatColor } from '../../utils/repetition-utils';
+
 
 @customElement('pt-main-view')
 export class PtMainView extends LitElement {
@@ -170,12 +172,15 @@ export class PtMainView extends LitElement {
 
       .inst-chip {
         border-radius: 14px;
-        padding: 12px 18px;
+        padding: 10px 14px;
         font-size: 13px;
         font-weight: 700;
         cursor: pointer;
-        transition: transform 0.12s ease, opacity 0.15s ease;
+        transition: transform 0.12s ease, opacity 0.15s ease, box-shadow 0.15s ease;
         user-select: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
       }
 
       .inst-chip:active {
@@ -191,6 +196,42 @@ export class PtMainView extends LitElement {
         background: #FFF;
         color: #23241F;
         border: 1px solid #E4E3DC;
+      }
+
+      .chip-heat-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 2px 6px;
+        border-radius: 8px;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        line-height: 1.2;
+      }
+
+      .inst-chip.primary .chip-heat-pill {
+        background: rgba(0, 0, 0, 0.2);
+        color: #F5F2F6;
+      }
+
+      .inst-chip.secondary .chip-heat-pill {
+        background: #ECEBE4;
+        color: #4C4B44;
+      }
+
+      .chip-heat-pill.due,
+      .chip-heat-pill.overdue {
+        background: #E05D44 !important;
+        color: #FFF !important;
+      }
+
+      .chip-heat-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
       }
 
       .manual-log-trigger {
@@ -258,6 +299,7 @@ export class PtMainView extends LitElement {
 
     const todaySessions = this.sessions.filter((s) => isSameDay(new Date(s.start), today));
     const instMap = new Map(this.instruments.map((i) => [i.id, i]));
+    const repetitionMap = calculateAllInstrumentsRepetition(this.instruments, this.sessions, today);
 
     const activeInstrument = this.activeSession
       ? instMap.get(this.activeSession.instrumentId) || {
@@ -312,17 +354,40 @@ export class PtMainView extends LitElement {
             <div class="idle-launcher">
               <div class="launcher-caption">tap an instrument to start</div>
               <div class="chips-grid">
-                ${this.instruments.map(
-                  (inst) => html`
+                ${this.instruments.map((inst) => {
+                  const rep = repetitionMap.get(inst.id);
+                  const heatDotColor = rep ? getHeatColor(rep.status) : '#A3A297';
+
+                  return html`
                     <div
                       class="inst-chip ${inst.tier}"
                       style="${inst.tier === 'primary' ? `background: ${inst.color};` : ''}"
+                      title="${rep ? rep.label : inst.name}"
                       @click=${() => this.handleStart(inst.id)}
                     >
-                      ${inst.name}
+                      <span>${inst.name}</span>
+                      ${rep && rep.step > 0
+                        ? html`
+                            <span class="chip-heat-pill ${rep.status}">
+                              ${rep.isDueToday
+                                ? html`🔥 Due`
+                                : rep.isOverdue
+                                ? html`⚠️ Overdue`
+                                : html`
+                                    <span class="chip-heat-dot" style="background: ${heatDotColor}"></span>
+                                    ${rep.step}/5
+                                  `}
+                            </span>
+                          `
+                        : html`
+                            <span class="chip-heat-pill new">
+                              <span class="chip-heat-dot" style="background: #A3A297"></span>
+                              1d
+                            </span>
+                          `}
                     </div>
-                  `
-                )}
+                  `;
+                })}
               </div>
               <div class="manual-log-trigger">
                 <button class="manual-log-btn" @click=${this.handleOpenManual}>
