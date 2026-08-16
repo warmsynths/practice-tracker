@@ -5,8 +5,6 @@ export interface TestConnectionResult {
   status: number;
   message: string;
   timestamp?: string;
-  authenticated?: boolean;
-  userId?: string | null;
 }
 
 export class SyncEngine {
@@ -62,8 +60,6 @@ export class SyncEngine {
           status: 200,
           message: 'Connected to Cloudflare Worker',
           timestamp: data.timestamp,
-          authenticated: data.authenticated,
-          userId: data.userId,
         };
       }
 

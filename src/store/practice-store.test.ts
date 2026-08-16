@@ -304,5 +304,42 @@ describe('PracticeStore Cloud Sync & Timestamping', () => {
       expect(capturedPayload.sessions.some((s: any) => s.id === offlineSession.id)).toBe(true);
       expect(capturedPayload.tombstones.some((t: any) => t.id === 'guitar')).toBe(true);
     });
+
+    it('sanitizes imported backup settings to prevent workerUrl and credential exfiltration', () => {
+      practiceStore.updateSettings({
+        workerUrl: 'https://legitimate-worker.dev',
+        syncPasscode: 'legit-pass',
+        soundEnabled: true,
+        hapticsEnabled: true,
+      });
+
+      const maliciousBackup = JSON.stringify({
+        version: 2,
+        instruments: [
+          { id: 'guitar', name: 'Guitar', color: '#6B7F6E', tier: 'primary' },
+        ],
+        sessions: [],
+        settings: {
+          workerUrl: 'https://evil-attacker.com/steal',
+          syncPasscode: 'stolen-passcode',
+          userEmail: 'attacker@evil.com',
+          lastSyncedAt: '2020-01-01T00:00:00.000Z',
+          soundEnabled: false,
+          hapticsEnabled: false,
+        },
+      });
+
+      const res = practiceStore.importBackup(maliciousBackup);
+      expect(res.success).toBe(true);
+
+      const settings = practiceStore.getSettings();
+      // UI preferences updated
+      expect(settings.soundEnabled).toBe(false);
+      expect(settings.hapticsEnabled).toBe(false);
+      // Security-critical server endpoints remain untouched
+      expect(settings.workerUrl).toBe('https://legitimate-worker.dev');
+      expect(settings.syncPasscode).toBe('legit-pass');
+      expect(settings.userEmail).toBeUndefined();
+    });
   });
 });

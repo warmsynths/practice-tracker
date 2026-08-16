@@ -729,8 +729,13 @@ class PracticeStore {
         this.persistSessions();
       }
 
-      if (parsed.settings) {
-        this.settings = { ...this.settings, ...parsed.settings };
+      if (parsed.settings && typeof parsed.settings === 'object') {
+        const { soundEnabled, hapticsEnabled } = parsed.settings;
+        this.settings = {
+          ...this.settings,
+          soundEnabled: typeof soundEnabled === 'boolean' ? soundEnabled : this.settings.soundEnabled,
+          hapticsEnabled: typeof hapticsEnabled === 'boolean' ? hapticsEnabled : this.settings.hapticsEnabled,
+        };
         this.persistSettings();
       }
 

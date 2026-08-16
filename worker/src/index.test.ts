@@ -33,29 +33,15 @@ describe('Cloudflare Worker BFF API Endpoints with Supabase Auth', () => {
     expect(res.headers.get('Access-Control-Allow-Headers')).toContain('Authorization');
   });
 
-  it('returns health check status on GET /api/health without requiring auth', async () => {
+  it('returns health check status on GET /api/health', async () => {
     const req = new Request('https://worker.dev/api/health', {
       method: 'GET',
     });
     const res = await worker.fetch(req, baseEnv);
     expect(res.status).toBe(200);
-    const data = (await res.json()) as { status: string; authenticated: boolean };
+    const data = (await res.json()) as { status: string; timestamp: string };
     expect(data.status).toBe('ok');
-    expect(data.authenticated).toBe(false);
-  });
-
-  it('identifies authenticated user on GET /api/health with valid Bearer JWT', async () => {
-    const token = createMockJwt('user-1234-uuid');
-    const req = new Request('https://worker.dev/api/health', {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
-    });
-    const res = await worker.fetch(req, baseEnv);
-    expect(res.status).toBe(200);
-    const data = (await res.json()) as { status: string; authenticated: boolean; userId: string };
-    expect(data.status).toBe('ok');
-    expect(data.authenticated).toBe(true);
-    expect(data.userId).toBe('user-1234-uuid');
+    expect(data.timestamp).toBeDefined();
   });
 
   it('rejects expired JWT on sync', async () => {

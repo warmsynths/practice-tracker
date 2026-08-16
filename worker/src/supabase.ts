@@ -59,6 +59,9 @@ export class SupabaseClient {
 
   public async upsertInstruments(instruments: ClientInstrument[]): Promise<void> {
     if (!instruments || instruments.length === 0) return;
+    if (!this.userId) {
+      throw new Error('SupabaseClient: user_id is required to upsert instruments');
+    }
 
     const rows: SupabaseInstrumentRow[] = instruments.map((i) => {
       const row: SupabaseInstrumentRow = {
@@ -69,15 +72,12 @@ export class SupabaseClient {
         archived: !!i.archived,
         deleted_at: i.deletedAt || null,
         updated_at: i.updatedAt || new Date().toISOString(),
+        user_id: this.userId,
       };
-      if (this.userId) {
-        row.user_id = this.userId;
-      }
       return row;
     });
 
-    const onConflictParam = this.userId ? '?on_conflict=user_id,id' : '';
-    const res = await this.fetchWithRetry(`${this.url}/rest/v1/instruments${onConflictParam}`, {
+    const res = await this.fetchWithRetry(`${this.url}/rest/v1/instruments?on_conflict=user_id,id`, {
       method: 'POST',
       headers: {
         ...this.headers,
@@ -94,6 +94,9 @@ export class SupabaseClient {
 
   public async upsertSessions(sessions: ClientSession[]): Promise<void> {
     if (!sessions || sessions.length === 0) return;
+    if (!this.userId) {
+      throw new Error('SupabaseClient: user_id is required to upsert sessions');
+    }
 
     const rows: SupabaseSessionRow[] = sessions.map((s) => {
       const row: SupabaseSessionRow = {
@@ -105,15 +108,12 @@ export class SupabaseClient {
         notes: s.notes || null,
         deleted_at: s.deletedAt || null,
         updated_at: s.updatedAt || new Date().toISOString(),
+        user_id: this.userId,
       };
-      if (this.userId) {
-        row.user_id = this.userId;
-      }
       return row;
     });
 
-    const onConflictParam = this.userId ? '?on_conflict=user_id,id' : '';
-    const res = await this.fetchWithRetry(`${this.url}/rest/v1/sessions${onConflictParam}`, {
+    const res = await this.fetchWithRetry(`${this.url}/rest/v1/sessions?on_conflict=user_id,id`, {
       method: 'POST',
       headers: {
         ...this.headers,
@@ -130,14 +130,14 @@ export class SupabaseClient {
 
   public async applyTombstones(tombstones: Tombstone[]): Promise<void> {
     if (!tombstones || tombstones.length === 0) return;
+    if (!this.userId) {
+      throw new Error('SupabaseClient: user_id is required to apply tombstones');
+    }
 
     const nowIso = new Date().toISOString();
     for (const t of tombstones) {
       const table = t.type === 'instrument' ? 'instruments' : 'sessions';
-      let patchUrl = `${this.url}/rest/v1/${table}?id=eq.${encodeURIComponent(t.id)}`;
-      if (this.userId) {
-        patchUrl += `&user_id=eq.${encodeURIComponent(this.userId)}`;
-      }
+      const patchUrl = `${this.url}/rest/v1/${table}?id=eq.${encodeURIComponent(t.id)}&user_id=eq.${encodeURIComponent(this.userId)}`;
 
       const res = await this.fetchWithRetry(patchUrl, {
         method: 'PATCH',
@@ -162,10 +162,11 @@ export class SupabaseClient {
     active: ClientInstrument[];
     tombstones: Tombstone[];
   }> {
-    let queryUrl = `${this.url}/rest/v1/instruments?select=*`;
-    if (this.userId) {
-      queryUrl += `&user_id=eq.${encodeURIComponent(this.userId)}`;
+    if (!this.userId) {
+      throw new Error('SupabaseClient: user_id is required to fetch instrument deltas');
     }
+
+    let queryUrl = `${this.url}/rest/v1/instruments?select=*&user_id=eq.${encodeURIComponent(this.userId)}`;
     if (lastSyncedAt) {
       queryUrl += `&updated_at=gt.${encodeURIComponent(lastSyncedAt)}`;
     }
@@ -210,10 +211,11 @@ export class SupabaseClient {
     active: ClientSession[];
     tombstones: Tombstone[];
   }> {
-    let queryUrl = `${this.url}/rest/v1/sessions?select=*`;
-    if (this.userId) {
-      queryUrl += `&user_id=eq.${encodeURIComponent(this.userId)}`;
+    if (!this.userId) {
+      throw new Error('SupabaseClient: user_id is required to fetch session deltas');
     }
+
+    let queryUrl = `${this.url}/rest/v1/sessions?select=*&user_id=eq.${encodeURIComponent(this.userId)}`;
     if (lastSyncedAt) {
       queryUrl += `&updated_at=gt.${encodeURIComponent(lastSyncedAt)}`;
     }

@@ -62,19 +62,17 @@ export default {
       isAuthenticated = true;
     }
 
-    // Route: GET /api/health (always returns health status)
+    // Route: GET /api/health (service liveness check)
     if (pathname === '/api/health' && request.method === 'GET') {
       return jsonResponse({
         status: 'ok',
-        authenticated: isAuthenticated,
-        userId: userId || null,
         timestamp: new Date().toISOString(),
       });
     }
 
-    // All further routes require authentication
-    if (!isAuthenticated) {
-      return errorResponse('Unauthorized: Valid Supabase Authorization token required', 401);
+    // All synchronization endpoints require valid authenticated user session
+    if (!isAuthenticated || !userId || !userToken) {
+      return errorResponse('Unauthorized: Valid Supabase Authorization token required for sync', 401);
     }
 
     // Route: POST /api/sync
