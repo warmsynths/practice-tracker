@@ -21,46 +21,30 @@ export class PtApp extends LitElement {
     css`
       :host {
         display: block;
-        min-height: 100vh;
-        background: #8F8D88;
+        height: 100vh;
+        height: 100dvh;
+        background: #EDEDE9;
         font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
       }
 
       .app-wrapper {
-        min-height: 100vh;
-        padding: 40px 0;
+        height: 100vh;
+        height: 100dvh;
+        width: 100%;
         display: flex;
         justify-content: center;
-        align-items: center;
-      }
-
-      @media (max-width: 480px) {
-        .app-wrapper {
-          padding: 0;
-          align-items: stretch;
-        }
+        background: #EDEDE9;
       }
 
       .phone-shell {
-        width: 380px;
-        height: 830px;
+        width: 100%;
+        max-width: 440px;
+        height: 100%;
         background: #EDEDE9;
-        border-radius: 28px;
-        overflow: hidden;
         display: flex;
         flex-direction: column;
         color: #23241F;
-        box-shadow: 0 20px 48px rgba(0, 0, 0, 0.22);
         position: relative;
-      }
-
-      @media (max-width: 480px) {
-        .phone-shell {
-          width: 100%;
-          height: 100vh;
-          border-radius: 0;
-          box-shadow: none;
-        }
       }
 
       .top-header {
