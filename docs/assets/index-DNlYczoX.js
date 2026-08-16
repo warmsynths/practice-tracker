@@ -62,6 +62,14 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
     margin: 0;
     padding: 0;
     -webkit-tap-highlight-color: transparent;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+    width: 0px;
+    height: 0px;
   }
 
   button, input, select, textarea {
@@ -271,12 +279,12 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       .streak-container {
         display: flex;
         justify-content: center;
-        padding: 18px 0 4px;
+        padding: 10px 0 2px;
       }
 
       .streak-outer-ring {
-        width: 168px;
-        height: 168px;
+        width: 154px;
+        height: 154px;
         border-radius: 50%;
         display: flex;
         align-items: center;
@@ -285,8 +293,8 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       }
 
       .streak-inner-circle {
-        width: 134px;
-        height: 134px;
+        width: 122px;
+        height: 122px;
         border-radius: 50%;
         background: #EDEDE9;
         display: flex;
@@ -296,7 +304,7 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       }
 
       .streak-number {
-        font-size: 42px;
+        font-size: 38px;
         font-weight: 700;
         letter-spacing: -0.02em;
         line-height: 1;
@@ -306,7 +314,7 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
         font-size: 10px;
         color: #767668;
         letter-spacing: 0.08em;
-        margin-top: 4px;
+        margin-top: 3px;
         font-weight: 700;
       }
 
@@ -315,13 +323,13 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
         justify-content: center;
         align-items: center;
         gap: 6px;
-        padding: 14px 0 6px;
-        min-height: 24px;
+        padding: 8px 0 4px;
+        min-height: 20px;
       }
 
       .dot {
-        width: 9px;
-        height: 9px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
       }
 
@@ -331,12 +339,12 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       }
 
       .active-card-wrap {
-        padding: 20px 24px 0;
+        padding: 14px 20px 0;
       }
 
       .active-card {
-        border-radius: 22px;
-        padding: 26px 24px 22px;
+        border-radius: 20px;
+        padding: 22px 20px 18px;
         color: #F5F2F6;
         transition: background-color 0.2s ease;
         box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
@@ -350,7 +358,7 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
         letter-spacing: 0.1em;
         font-weight: 700;
         opacity: 0.9;
-        margin-bottom: 18px;
+        margin-bottom: 14px;
       }
 
       .active-pulse-dot {
@@ -362,29 +370,29 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       }
 
       .active-title {
-        font-size: 32px;
+        font-size: 28px;
         font-weight: 700;
         letter-spacing: -0.02em;
-        margin-bottom: 6px;
+        margin-bottom: 4px;
       }
 
       .active-timer {
-        font-size: 40px;
+        font-size: 36px;
         font-weight: 700;
         letter-spacing: -0.01em;
         font-variant-numeric: tabular-nums;
-        margin-bottom: 22px;
+        margin-bottom: 18px;
       }
 
       .btn-end {
         background: #F5F2F6;
         color: #3C3444;
-        border-radius: 16px;
-        height: 56px;
+        border-radius: 14px;
+        height: 50px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 16px;
+        font-size: 15px;
         font-weight: 700;
         cursor: pointer;
         user-select: none;
@@ -392,7 +400,7 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
 
       .discard-link {
         text-align: center;
-        margin-top: 12px;
+        margin-top: 10px;
         font-size: 12px;
         color: #F5F2F6;
         opacity: 0.75;
@@ -402,14 +410,14 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       }
 
       .idle-launcher {
-        padding: 18px 24px 0;
+        padding: 10px 20px 0;
       }
 
       .launcher-caption {
         font-size: 11px;
         color: #767668;
         text-align: center;
-        margin-bottom: 14px;
+        margin-bottom: 10px;
         font-weight: 500;
       }
 
@@ -417,12 +425,12 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
         display: flex;
         flex-wrap: wrap;
         justify-content: center;
-        gap: 8px;
+        gap: 6px;
       }
 
       .inst-chip {
-        border-radius: 14px;
-        padding: 10px 14px;
+        border-radius: 12px;
+        padding: 7px 11px;
         font-size: 13px;
         font-weight: 700;
         cursor: pointer;
@@ -430,7 +438,7 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
         user-select: none;
         display: inline-flex;
         align-items: center;
-        gap: 7px;
+        gap: 6px;
       }
 
       .inst-chip:active {
@@ -451,13 +459,13 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       .chip-heat-pill {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 2px 6px;
-        border-radius: 8px;
+        gap: 3px;
+        padding: 2px 5px;
+        border-radius: 6px;
         font-size: 10px;
         font-weight: 700;
         letter-spacing: 0.02em;
-        line-height: 1.2;
+        line-height: 1.1;
       }
 
       .inst-chip.primary .chip-heat-pill {
@@ -477,8 +485,8 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       }
 
       .chip-heat-dot {
-        width: 6px;
-        height: 6px;
+        width: 5px;
+        height: 5px;
         border-radius: 50%;
         display: inline-block;
         flex-shrink: 0;
@@ -487,18 +495,18 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       .manual-log-trigger {
         display: flex;
         justify-content: center;
-        margin-top: 24px;
-        padding-bottom: 12px;
+        margin-top: 14px;
+        padding-bottom: 8px;
       }
 
       .manual-log-btn {
         background: transparent;
         border: 1px dashed #C3C1B7;
         color: #767668;
-        font-size: 12px;
+        font-size: 11px;
         font-weight: 600;
-        border-radius: 10px;
-        padding: 8px 16px;
+        border-radius: 9px;
+        padding: 6px 14px;
         cursor: pointer;
       }
 
@@ -2756,7 +2764,7 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
       }
 
       .top-header {
-        padding: 24px 24px 0;
+        padding: 16px 20px 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -2840,10 +2848,18 @@ ${v}`}class D extends Error{constructor({message:e,code:t,cause:r,name:n}){var i
         flex: 1;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .main-scroll-area::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
       }
 
       .bottom-nav {
-        padding: 14px 20px 22px;
+        padding: 12px 20px 16px;
         display: flex;
         justify-content: space-around;
         font-size: 12px;

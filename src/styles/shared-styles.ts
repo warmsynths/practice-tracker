@@ -19,6 +19,14 @@ export const commonStyles = css`
     margin: 0;
     padding: 0;
     -webkit-tap-highlight-color: transparent;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  ::-webkit-scrollbar {
+    display: none;
+    width: 0px;
+    height: 0px;
   }
 
   button, input, select, textarea {

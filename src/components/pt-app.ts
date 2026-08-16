@@ -49,7 +49,7 @@ export class PtApp extends LitElement {
       }
 
       .top-header {
-        padding: 24px 24px 0;
+        padding: 16px 20px 0;
         display: flex;
         justify-content: space-between;
         align-items: center;
@@ -133,10 +133,18 @@ export class PtApp extends LitElement {
         flex: 1;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        -ms-overflow-style: none;
+      }
+
+      .main-scroll-area::-webkit-scrollbar {
+        display: none;
+        width: 0;
+        height: 0;
       }
 
       .bottom-nav {
-        padding: 14px 20px 22px;
+        padding: 12px 20px 16px;
         display: flex;
         justify-content: space-around;
         font-size: 12px;
