@@ -27,3 +27,12 @@ _Avoid_: Combo, run, chain
 **Rotation**:
 The proportional distribution of practice time across all instruments in the kit over a given rolling period.
 _Avoid_: Breakdown, split, distribution ratio
+
+**Tombstone**:
+A record of a deleted session or instrument retaining a deletion timestamp to propagate removals across disconnected devices without resurrection.
+_Avoid_: Soft-delete flag, purge marker
+
+**Sync Status**:
+The real-time synchronization state between the local device and the remote database (Synced, Syncing, Offline, or Auth Error).
+_Avoid_: Cloud status, network indicator
+
