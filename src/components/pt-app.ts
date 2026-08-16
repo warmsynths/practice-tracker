@@ -13,6 +13,7 @@ import './modals/pt-manual-entry-modal';
 import './modals/pt-edit-session-modal';
 import './modals/pt-edit-instrument-modal';
 import './modals/pt-settings-modal';
+import './modals/pt-auth-modal';
 
 @customElement('pt-app')
 export class PtApp extends LitElement {
@@ -67,6 +68,46 @@ export class PtApp extends LitElement {
         display: flex;
         align-items: center;
         gap: 8px;
+      }
+
+      .auth-header-btn {
+        background: #23241F;
+        color: #F2F1EC;
+        border: none;
+        padding: 5px 12px;
+        border-radius: 14px;
+        font-size: 11px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: opacity 0.15s ease, transform 0.1s ease;
+      }
+
+      .auth-header-btn:hover {
+        opacity: 0.88;
+      }
+
+      .auth-header-btn:active {
+        transform: scale(0.96);
+      }
+
+      .user-avatar-btn {
+        background: #E1E1DB;
+        color: #23241F;
+        border: none;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: background 0.15s ease;
+      }
+
+      .user-avatar-btn:hover {
+        background: #D4D3CB;
       }
 
       .settings-icon-btn {
@@ -132,11 +173,14 @@ export class PtApp extends LitElement {
   @state() private syncStatus: SyncStatus = 'local';
   @state() private lastSyncedAt: string | null = null;
   @state() private syncErrorMessage: string | null = null;
+  @state() private userEmail?: string;
+  @state() private isAuthenticated = false;
   @state() private now: number = Date.now();
 
   // Modals
   @state() private manualLogModalOpen = false;
   @state() private settingsModalOpen = false;
+  @state() private authModalOpen = false;
   @state() private editSessionModalOpen = false;
   @state() private sessionToEdit: Session | null = null;
   @state() private editInstrumentModalOpen = false;
@@ -177,6 +221,8 @@ export class PtApp extends LitElement {
     this.syncStatus = practiceStore.getSyncStatus();
     this.lastSyncedAt = practiceStore.getLastSyncedAt();
     this.syncErrorMessage = practiceStore.getSyncErrorMessage();
+    this.userEmail = practiceStore.getUserEmail();
+    this.isAuthenticated = practiceStore.isAuthenticated();
   }
 
   // --- Handlers ---
@@ -272,6 +318,26 @@ export class PtApp extends LitElement {
                 .errorMessage=${this.syncErrorMessage}
                 @open-settings=${() => (this.settingsModalOpen = true)}
               ></pt-sync-pill>
+
+              ${this.isAuthenticated
+                ? html`
+                    <button
+                      class="user-avatar-btn"
+                      title="${this.userEmail || 'Account'}"
+                      @click=${() => (this.settingsModalOpen = true)}
+                    >
+                      ${(this.userEmail?.[0] || 'U').toUpperCase()}
+                    </button>
+                  `
+                : html`
+                    <button
+                      class="auth-header-btn"
+                      @click=${() => (this.authModalOpen = true)}
+                    >
+                      Sign In
+                    </button>
+                  `}
+
               <button
                 class="settings-icon-btn"
                 title="Settings & Backups"
@@ -394,8 +460,17 @@ export class PtApp extends LitElement {
         @import-backup=${this.handleImportBackup}
         @load-demo-data=${this.handleLoadDemoData}
         @clear-all-data=${this.handleClearAllData}
+        @open-auth-modal=${() => {
+          this.settingsModalOpen = false;
+          this.authModalOpen = true;
+        }}
         @close-modal=${() => (this.settingsModalOpen = false)}
       ></pt-settings-modal>
+
+      <pt-auth-modal
+        .open=${this.authModalOpen}
+        @close-modal=${() => (this.authModalOpen = false)}
+      ></pt-auth-modal>
     `;
   }
 }

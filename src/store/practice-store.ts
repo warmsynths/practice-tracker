@@ -12,6 +12,7 @@ import { slug } from '../utils/chart-utils';
 import { addDays, startOfDay } from '../utils/date-utils';
 import { playStartSound, playEndSound, playClickSound, triggerHaptic } from '../utils/audio-utils';
 import { syncEngine, TestConnectionResult } from '../services/sync-engine';
+import { authService } from '../services/auth-service';
 
 export const DEFAULT_INSTRUMENTS: Instrument[] = [
   { id: 'guitar', name: 'Guitar', color: '#6B7F6E', tier: 'primary', updatedAt: new Date(0).toISOString() },
@@ -76,6 +77,7 @@ class PracticeStore {
 
   constructor() {
     this.loadFromStorage();
+    this.initAuth();
   }
 
   public subscribe(listener: () => void): () => void {
@@ -89,6 +91,41 @@ class PracticeStore {
     this.listeners.forEach((fn) => fn());
   }
 
+  private initAuth(): void {
+    authService.subscribe((authState) => {
+      if (authState.isLoading) return;
+
+      if (authState.isAuthenticated && authState.user?.email) {
+        const previousEmail = this.settings.userEmail;
+        this.settings.userEmail = authState.user.email;
+        this.persistSettings();
+
+        // If newly signed in or user changed, adopt local data and sync
+        if (previousEmail !== authState.user.email) {
+          this.syncWithCloud(true).catch((err) => {
+            console.warn('Initial cloud sync error after sign-in:', err);
+          });
+        }
+      } else if (!authState.isAuthenticated && this.settings.userEmail) {
+        // User signed out -> clear local user storage to prevent data bleeding
+        this.instruments = [...DEFAULT_INSTRUMENTS];
+        this.sessions = [];
+        this.activeSession = null;
+        this.tombstones = [];
+        this.settings.userEmail = undefined;
+        this.settings.lastSyncedAt = undefined;
+        this.syncStatus = 'local';
+        this.syncErrorMessage = null;
+        this.persistInstruments();
+        this.persistSessions();
+        this.persistActive();
+        this.persistTombstones();
+        this.persistSettings();
+        this.notify();
+      }
+    });
+  }
+
   public getEffectiveWorkerUrl(): string | undefined {
     return this.settings.workerUrl || getEnvSyncUrl();
   }
@@ -97,8 +134,40 @@ class PracticeStore {
     return this.settings.syncPasscode || getEnvSyncPasscode();
   }
 
+  public getSyncAuthHeaderSync(): string | undefined {
+    const authState = authService.getAuthState();
+    if (authState.accessToken) {
+      return `Bearer ${authState.accessToken}`;
+    }
+    return this.getEffectiveSyncPasscode();
+  }
+
+  public async getEffectiveAuthHeader(): Promise<string | undefined> {
+    const syncHeader = this.getSyncAuthHeaderSync();
+    if (syncHeader) return syncHeader;
+    const token = await authService.getAccessToken();
+    if (token) {
+      return `Bearer ${token}`;
+    }
+    return undefined;
+  }
+
   public isCloudSyncConfigured(): boolean {
-    return !!this.getEffectiveWorkerUrl();
+    const hasWorker = !!this.getEffectiveWorkerUrl();
+    const hasAuth = authService.getAuthState().isAuthenticated || !!this.getEffectiveSyncPasscode();
+    return hasWorker && hasAuth;
+  }
+
+  public getUserEmail(): string | undefined {
+    return authService.getUser()?.email || this.settings.userEmail;
+  }
+
+  public isAuthenticated(): boolean {
+    return authService.getAuthState().isAuthenticated;
+  }
+
+  public async signOut(): Promise<void> {
+    await authService.signOut();
   }
 
   private loadFromStorage(): void {
@@ -165,7 +234,12 @@ class PracticeStore {
 
       // Determine initial sync status
       if (this.isCloudSyncConfigured()) {
-        this.syncStatus = typeof window !== 'undefined' && typeof navigator !== 'undefined' && navigator.onLine === false ? 'offline' : 'synced';
+        this.syncStatus =
+          typeof window !== 'undefined' &&
+          typeof navigator !== 'undefined' &&
+          navigator.onLine === false
+            ? 'offline'
+            : 'synced';
       } else {
         this.syncStatus = 'local';
       }
@@ -440,10 +514,13 @@ class PracticeStore {
   }
 
   // --- Cloud Sync Implementation ---
-  public async testConnection(workerUrl?: string, passcode?: string): Promise<TestConnectionResult> {
-    const targetUrl = workerUrl !== undefined ? workerUrl : this.settings.workerUrl || '';
-    const targetPasscode = passcode !== undefined ? passcode : this.settings.syncPasscode;
-    return syncEngine.testConnection(targetUrl, targetPasscode);
+  public async testConnection(workerUrl?: string, authHeader?: string): Promise<TestConnectionResult> {
+    const targetUrl = workerUrl !== undefined ? workerUrl : this.getEffectiveWorkerUrl() || '';
+    let targetAuth = authHeader;
+    if (targetAuth === undefined) {
+      targetAuth = await this.getEffectiveAuthHeader();
+    }
+    return syncEngine.testConnection(targetUrl, targetAuth);
   }
 
   private currentSyncPromise: Promise<{ success: boolean; message?: string }> | null = null;
@@ -465,7 +542,6 @@ class PracticeStore {
     }
 
     const workerUrl = this.getEffectiveWorkerUrl();
-    const syncPasscode = this.getEffectiveSyncPasscode();
 
     if (!workerUrl) {
       this.syncStatus = 'local';
@@ -479,7 +555,7 @@ class PracticeStore {
       return { success: false, message: 'Device is offline' };
     }
 
-    this.currentSyncPromise = this.performSync(workerUrl, syncPasscode, forceAll);
+    this.currentSyncPromise = this.performSync(workerUrl, forceAll);
     try {
       return await this.currentSyncPromise;
     } finally {
@@ -489,7 +565,6 @@ class PracticeStore {
 
   private async performSync(
     workerUrl: string,
-    syncPasscode: string | undefined,
     forceAll: boolean
   ): Promise<{ success: boolean; message?: string }> {
     this.syncStatus = 'syncing';
@@ -497,6 +572,7 @@ class PracticeStore {
     this.notify();
 
     try {
+      const authHeader = this.getSyncAuthHeaderSync();
       const lastSynced = forceAll ? null : this.settings.lastSyncedAt || null;
       const sentTombstoneIds = new Set(this.tombstones.map((t) => t.id));
 
@@ -518,7 +594,7 @@ class PracticeStore {
 
       const response = await syncEngine.sync(
         workerUrl,
-        syncPasscode,
+        authHeader,
         payload
       );
 
@@ -610,7 +686,7 @@ class PracticeStore {
     this.settings = { ...this.settings, ...partial };
     this.persistSettings();
 
-    if (this.settings.workerUrl) {
+    if (this.isCloudSyncConfigured()) {
       this.syncStatus = 'synced';
     } else {
       this.syncStatus = 'local';

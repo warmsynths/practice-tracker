@@ -131,6 +131,12 @@ export class PtSettingsModal extends LitElement {
         color: #767668;
         margin-top: 2px;
       }
+      .user-email-label {
+        font-size: 13px;
+        font-weight: 700;
+        color: #23241F;
+        word-break: break-all;
+      }
       .btn-sync {
         font-size: 12px;
         font-weight: 700;
@@ -151,6 +157,27 @@ export class PtSettingsModal extends LitElement {
       .btn-sync:disabled {
         opacity: 0.6;
         cursor: not-allowed;
+      }
+      .account-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 8px;
+      }
+      .btn-signout {
+        background: none;
+        border: 1px solid #E1E1DB;
+        color: #767668;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 8px 12px;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.15s ease;
+      }
+      .btn-signout:hover {
+        background: #FBEAE8;
+        border-color: #F2B8B5;
+        color: #B3261E;
       }
       .btn-grid {
         display: flex;
@@ -198,6 +225,16 @@ export class PtSettingsModal extends LitElement {
       await practiceStore.syncWithCloud(false);
     } finally {
       this.isSyncing = false;
+    }
+  }
+
+  private handleOpenAuth() {
+    this.dispatchEvent(new CustomEvent('open-auth-modal', { bubbles: true, composed: true }));
+  }
+
+  private async handleSignOut() {
+    if (confirm('Sign out of your account? Your local cache will be cleared on this device.')) {
+      await practiceStore.signOut();
     }
   }
 
@@ -266,9 +303,9 @@ export class PtSettingsModal extends LitElement {
   }
 
   private getSyncStatusLabel(): { label: string; dotClass: string } {
-    const isConfigured = practiceStore.isCloudSyncConfigured();
-    if (!isConfigured) {
-      return { label: 'Local storage only', dotClass: 'local' };
+    const isAuthenticated = practiceStore.isAuthenticated();
+    if (!isAuthenticated && !practiceStore.getEffectiveSyncPasscode()) {
+      return { label: 'Guest Mode (Local only)', dotClass: 'local' };
     }
 
     switch (this.syncStatus) {
@@ -281,14 +318,15 @@ export class PtSettingsModal extends LitElement {
       case 'error':
         return { label: 'Sync paused (connection error)', dotClass: 'error' };
       default:
-        return { label: 'Local storage only', dotClass: 'local' };
+        return { label: 'Guest Mode (Local only)', dotClass: 'local' };
     }
   }
 
   render() {
     if (!this.open) return html``;
 
-    const isConfigured = practiceStore.isCloudSyncConfigured();
+    const userEmail = practiceStore.getUserEmail();
+    const isAuthenticated = practiceStore.isAuthenticated();
     const statusInfo = this.getSyncStatusLabel();
 
     return html`
@@ -299,24 +337,36 @@ export class PtSettingsModal extends LitElement {
             <button class="close-btn" @click=${this.close}>&times;</button>
           </div>
 
-          <!-- Cloud Synchronization -->
-          <div class="section-heading">Cloud Synchronization</div>
+          <!-- Account & Cloud Synchronization -->
+          <div class="section-heading">Account & Cloud Backup</div>
           <div class="sync-card">
             <div class="setting-info">
-              <div class="setting-title">Auto Cloud Backup</div>
-              <div class="sync-status-row">
-                <span class="sync-dot ${statusInfo.dotClass}"></span>
-                <span>${statusInfo.label}</span>
-              </div>
-              ${isConfigured && this.settings.lastSyncedAt
+              ${isAuthenticated && userEmail
                 ? html`
-                    <div class="sync-timestamp">
-                      Last synced: ${this.formatLastSync(this.settings.lastSyncedAt)}
+                    <div class="user-email-label">${userEmail}</div>
+                    <div class="sync-status-row">
+                      <span class="sync-dot ${statusInfo.dotClass}"></span>
+                      <span>${statusInfo.label}</span>
                     </div>
+                    ${this.settings.lastSyncedAt
+                      ? html`
+                          <div class="sync-timestamp">
+                            Last synced: ${this.formatLastSync(this.settings.lastSyncedAt)}
+                          </div>
+                        `
+                      : html``}
                   `
-                : html``}
+                : html`
+                    <div class="setting-title">Guest Mode</div>
+                    <div class="sync-status-row">
+                      <span class="sync-dot ${statusInfo.dotClass}"></span>
+                      <span>Local storage only</span>
+                    </div>
+                    <div class="sync-timestamp">Sign in to sync across devices</div>
+                  `}
             </div>
-            ${isConfigured
+
+            ${isAuthenticated
               ? html`
                   <button
                     type="button"
@@ -327,8 +377,27 @@ export class PtSettingsModal extends LitElement {
                     ${this.isSyncing || this.syncStatus === 'syncing' ? 'Syncing...' : 'Sync Now'}
                   </button>
                 `
-              : html``}
+              : html`
+                  <button
+                    type="button"
+                    class="btn btn-primary"
+                    style="height: 36px; padding: 0 14px; width: auto; font-size: 12px;"
+                    @click=${this.handleOpenAuth}
+                  >
+                    Sign In
+                  </button>
+                `}
           </div>
+
+          ${isAuthenticated
+            ? html`
+                <div class="account-actions">
+                  <button type="button" class="btn-signout" @click=${this.handleSignOut}>
+                    Sign Out
+                  </button>
+                </div>
+              `
+            : html``}
 
           <!-- Feedback & Sound -->
           <div class="section-heading">Feedback & Sound</div>

@@ -12,17 +12,22 @@ async function sleep(ms: number): Promise<void> {
 
 export class SupabaseClient {
   private url: string;
-  private serviceKey: string;
+  private apiKey: string;
+  private userToken?: string;
+  private userId?: string;
 
-  constructor(url: string, serviceKey: string) {
+  constructor(url: string, apiKey: string, userToken?: string, userId?: string) {
     this.url = url.replace(/\/+$/, '');
-    this.serviceKey = serviceKey;
+    this.apiKey = apiKey;
+    this.userToken = userToken;
+    this.userId = userId;
   }
 
   private get headers(): HeadersInit {
+    const authHeader = this.userToken ? `Bearer ${this.userToken}` : `Bearer ${this.apiKey}`;
     return {
-      apikey: this.serviceKey,
-      Authorization: `Bearer ${this.serviceKey}`,
+      apikey: this.apiKey,
+      Authorization: authHeader,
       'Content-Type': 'application/json',
     };
   }
@@ -55,17 +60,24 @@ export class SupabaseClient {
   public async upsertInstruments(instruments: ClientInstrument[]): Promise<void> {
     if (!instruments || instruments.length === 0) return;
 
-    const rows: SupabaseInstrumentRow[] = instruments.map((i) => ({
-      id: i.id,
-      name: i.name,
-      color: i.color,
-      tier: i.tier,
-      archived: !!i.archived,
-      deleted_at: i.deletedAt || null,
-      updated_at: i.updatedAt || new Date().toISOString(),
-    }));
+    const rows: SupabaseInstrumentRow[] = instruments.map((i) => {
+      const row: SupabaseInstrumentRow = {
+        id: i.id,
+        name: i.name,
+        color: i.color,
+        tier: i.tier,
+        archived: !!i.archived,
+        deleted_at: i.deletedAt || null,
+        updated_at: i.updatedAt || new Date().toISOString(),
+      };
+      if (this.userId) {
+        row.user_id = this.userId;
+      }
+      return row;
+    });
 
-    const res = await this.fetchWithRetry(`${this.url}/rest/v1/instruments`, {
+    const onConflictParam = this.userId ? '?on_conflict=user_id,id' : '';
+    const res = await this.fetchWithRetry(`${this.url}/rest/v1/instruments${onConflictParam}`, {
       method: 'POST',
       headers: {
         ...this.headers,
@@ -83,18 +95,25 @@ export class SupabaseClient {
   public async upsertSessions(sessions: ClientSession[]): Promise<void> {
     if (!sessions || sessions.length === 0) return;
 
-    const rows: SupabaseSessionRow[] = sessions.map((s) => ({
-      id: s.id,
-      instrument_id: s.instrumentId,
-      start_time: s.start,
-      end_time: s.end,
-      duration: s.duration,
-      notes: s.notes || null,
-      deleted_at: s.deletedAt || null,
-      updated_at: s.updatedAt || new Date().toISOString(),
-    }));
+    const rows: SupabaseSessionRow[] = sessions.map((s) => {
+      const row: SupabaseSessionRow = {
+        id: s.id,
+        instrument_id: s.instrumentId,
+        start_time: s.start,
+        end_time: s.end,
+        duration: s.duration,
+        notes: s.notes || null,
+        deleted_at: s.deletedAt || null,
+        updated_at: s.updatedAt || new Date().toISOString(),
+      };
+      if (this.userId) {
+        row.user_id = this.userId;
+      }
+      return row;
+    });
 
-    const res = await this.fetchWithRetry(`${this.url}/rest/v1/sessions`, {
+    const onConflictParam = this.userId ? '?on_conflict=user_id,id' : '';
+    const res = await this.fetchWithRetry(`${this.url}/rest/v1/sessions${onConflictParam}`, {
       method: 'POST',
       headers: {
         ...this.headers,
@@ -115,7 +134,12 @@ export class SupabaseClient {
     const nowIso = new Date().toISOString();
     for (const t of tombstones) {
       const table = t.type === 'instrument' ? 'instruments' : 'sessions';
-      const res = await this.fetchWithRetry(`${this.url}/rest/v1/${table}?id=eq.${encodeURIComponent(t.id)}`, {
+      let patchUrl = `${this.url}/rest/v1/${table}?id=eq.${encodeURIComponent(t.id)}`;
+      if (this.userId) {
+        patchUrl += `&user_id=eq.${encodeURIComponent(this.userId)}`;
+      }
+
+      const res = await this.fetchWithRetry(patchUrl, {
         method: 'PATCH',
         headers: {
           ...this.headers,
@@ -139,6 +163,9 @@ export class SupabaseClient {
     tombstones: Tombstone[];
   }> {
     let queryUrl = `${this.url}/rest/v1/instruments?select=*`;
+    if (this.userId) {
+      queryUrl += `&user_id=eq.${encodeURIComponent(this.userId)}`;
+    }
     if (lastSyncedAt) {
       queryUrl += `&updated_at=gt.${encodeURIComponent(lastSyncedAt)}`;
     }
@@ -184,6 +211,9 @@ export class SupabaseClient {
     tombstones: Tombstone[];
   }> {
     let queryUrl = `${this.url}/rest/v1/sessions?select=*`;
+    if (this.userId) {
+      queryUrl += `&user_id=eq.${encodeURIComponent(this.userId)}`;
+    }
     if (lastSyncedAt) {
       queryUrl += `&updated_at=gt.${encodeURIComponent(lastSyncedAt)}`;
     }

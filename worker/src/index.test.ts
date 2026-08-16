@@ -2,9 +2,18 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import worker from './index';
 import { Env } from './types';
 
-describe('Cloudflare Worker BFF API Endpoints', () => {
+function createMockJwt(sub: string, expOffsetSec = 3600): string {
+  const header = btoa(JSON.stringify({ alg: 'HS256', typ: 'JWT' }));
+  const exp = Math.floor(Date.now() / 1000) + expOffsetSec;
+  const payload = btoa(JSON.stringify({ sub, exp, email: 'musician@example.com' }));
+  const signature = btoa('mock-sig');
+  return `${header}.${payload}.${signature}`;
+}
+
+describe('Cloudflare Worker BFF API Endpoints with Supabase Auth', () => {
   const baseEnv: Env = {
     SUPABASE_URL: 'https://example.supabase.co',
+    SUPABASE_ANON_KEY: 'test-anon-key',
     SUPABASE_SERVICE_ROLE_KEY: 'test-service-key',
     PT_PASSCODE: 'my-super-secret-pass',
   };
@@ -21,55 +30,63 @@ describe('Cloudflare Worker BFF API Endpoints', () => {
     const res = await worker.fetch(req, baseEnv);
     expect(res.status).toBe(204);
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
-    expect(res.headers.get('Access-Control-Allow-Methods')).toContain('POST');
+    expect(res.headers.get('Access-Control-Allow-Headers')).toContain('Authorization');
   });
 
-  it('rejects unauthorized request when X-PT-Secret is missing or incorrect', async () => {
-    const reqNoSecret = new Request('https://worker.dev/api/health', {
-      method: 'GET',
-    });
-    const resNoSecret = await worker.fetch(reqNoSecret, baseEnv);
-    expect(resNoSecret.status).toBe(401);
-
-    const reqWrongSecret = new Request('https://worker.dev/api/health', {
-      method: 'GET',
-      headers: { 'X-PT-Secret': 'wrong-passcode' },
-    });
-    const resWrongSecret = await worker.fetch(reqWrongSecret, baseEnv);
-    expect(resWrongSecret.status).toBe(401);
-  });
-
-  it('allows GET /api/health with valid X-PT-Secret passcode', async () => {
+  it('returns health check status on GET /api/health without requiring auth', async () => {
     const req = new Request('https://worker.dev/api/health', {
       method: 'GET',
-      headers: { 'X-PT-Secret': 'my-super-secret-pass' },
     });
-
     const res = await worker.fetch(req, baseEnv);
     expect(res.status).toBe(200);
-
-    const data = (await res.json()) as { status: string; timestamp: string };
+    const data = (await res.json()) as { status: string; authenticated: boolean };
     expect(data.status).toBe('ok');
-    expect(data.timestamp).toBeDefined();
+    expect(data.authenticated).toBe(false);
   });
 
-  it('returns 500 on POST /api/sync if Supabase credentials are missing', async () => {
+  it('identifies authenticated user on GET /api/health with valid Bearer JWT', async () => {
+    const token = createMockJwt('user-1234-uuid');
+    const req = new Request('https://worker.dev/api/health', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const res = await worker.fetch(req, baseEnv);
+    expect(res.status).toBe(200);
+    const data = (await res.json()) as { status: string; authenticated: boolean; userId: string };
+    expect(data.status).toBe('ok');
+    expect(data.authenticated).toBe(true);
+    expect(data.userId).toBe('user-1234-uuid');
+  });
+
+  it('rejects expired JWT on sync', async () => {
+    const expiredToken = createMockJwt('user-1234-uuid', -3600); // expired 1h ago
     const req = new Request('https://worker.dev/api/sync', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-PT-Secret': 'my-super-secret-pass',
+        Authorization: `Bearer ${expiredToken}`,
       },
       body: JSON.stringify({ lastSyncedAt: null }),
     });
 
-    const res = await worker.fetch(req, { PT_PASSCODE: 'my-super-secret-pass' });
-    expect(res.status).toBe(500);
+    const res = await worker.fetch(req, baseEnv);
+    expect(res.status).toBe(401);
     const data = (await res.json()) as { error: string };
-    expect(data.error).toContain('Supabase credentials missing');
+    expect(data.error).toContain('expired');
   });
 
-  it('handles POST /api/sync and returns delta payload', async () => {
+  it('rejects unauthorized request on /api/sync when no auth header is provided', async () => {
+    const req = new Request('https://worker.dev/api/sync', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lastSyncedAt: null }),
+    });
+    const res = await worker.fetch(req, { ...baseEnv, ENVIRONMENT: 'production' });
+    expect(res.status).toBe(401);
+  });
+
+  it('handles POST /api/sync with valid Supabase JWT and returns user scoped deltas', async () => {
+    const token = createMockJwt('user-guitar-pro-uuid');
     const mockDbSessions = [
       {
         id: 's-db-1',
@@ -97,10 +114,13 @@ describe('Cloudflare Worker BFF API Endpoints', () => {
 
     globalThis.fetch = vi.fn().mockImplementation(async (url: string, init?: RequestInit) => {
       const urlStr = String(url);
+      expect(init?.headers).toBeDefined();
       if (urlStr.includes('/rest/v1/sessions') && init?.method === 'GET') {
+        expect(urlStr).toContain('user_id=eq.user-guitar-pro-uuid');
         return new Response(JSON.stringify(mockDbSessions), { status: 200 });
       }
       if (urlStr.includes('/rest/v1/instruments') && init?.method === 'GET') {
+        expect(urlStr).toContain('user_id=eq.user-guitar-pro-uuid');
         return new Response(JSON.stringify(mockDbInstruments), { status: 200 });
       }
       if (init?.method === 'POST') {
@@ -113,7 +133,7 @@ describe('Cloudflare Worker BFF API Endpoints', () => {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-PT-Secret': 'my-super-secret-pass',
+        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
         lastSyncedAt: '2026-08-16T08:00:00.000Z',

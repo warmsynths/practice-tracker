@@ -36,3 +36,15 @@ _Avoid_: Soft-delete flag, purge marker
 The real-time synchronization state between the local device and the remote database (Synced, Syncing, Offline, or Auth Error).
 _Avoid_: Cloud status, network indicator
 
+**Guest Mode**:
+The state of using the application without authentication, persisting practice sessions and kit settings exclusively to local storage.
+_Avoid_: Demo mode, sandbox, anonymous mode
+
+**Account**:
+An authenticated musician identity associated with a unique set of cloud-synchronized practice records and kit configuration.
+_Avoid_: Profile, tenant, login
+
+**Adoption**:
+The automatic transfer of unauthenticated local sessions and kit configuration into an account upon initial sign-in.
+_Avoid_: Merge, claiming, ingestion
+

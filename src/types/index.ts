@@ -40,6 +40,7 @@ export interface AppSettings {
   workerUrl?: string;
   syncPasscode?: string;
   lastSyncedAt?: string;
+  userEmail?: string;
 }
 
 export interface SyncRequestPayload {
@@ -54,6 +55,18 @@ export interface SyncResponsePayload {
   instruments: Instrument[];
   sessions: Session[];
   tombstones: Tombstone[];
+}
+
+export interface AuthUser {
+  id: string;
+  email?: string;
+}
+
+export interface AuthState {
+  user: AuthUser | null;
+  accessToken: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
 }
 
 export type TabType = 'main' | 'kit' | 'data';

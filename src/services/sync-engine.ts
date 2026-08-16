@@ -5,6 +5,8 @@ export interface TestConnectionResult {
   status: number;
   message: string;
   timestamp?: string;
+  authenticated?: boolean;
+  userId?: string | null;
 }
 
 export class SyncEngine {
@@ -16,9 +18,23 @@ export class SyncEngine {
     return cleaned;
   }
 
+  private applyAuthHeaders(headers: Record<string, string>, auth?: string) {
+    if (!auth) return;
+    const trimmed = auth.trim();
+    if (trimmed.toLowerCase().startsWith('bearer ')) {
+      headers['Authorization'] = trimmed;
+    } else if (trimmed.includes('.') && trimmed.length > 30) {
+      // Looks like a JWT token
+      headers['Authorization'] = `Bearer ${trimmed}`;
+    } else {
+      // Legacy passcode
+      headers['X-PT-Secret'] = trimmed;
+    }
+  }
+
   public async testConnection(
     workerUrl: string,
-    syncPasscode?: string
+    authTokenOrPasscode?: string
   ): Promise<TestConnectionResult> {
     const formatted = this.formatUrl(workerUrl);
     if (!formatted) {
@@ -26,10 +42,8 @@ export class SyncEngine {
     }
 
     try {
-      const headers: HeadersInit = {};
-      if (syncPasscode) {
-        headers['X-PT-Secret'] = syncPasscode.trim();
-      }
+      const headers: Record<string, string> = {};
+      this.applyAuthHeaders(headers, authTokenOrPasscode);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000);
@@ -48,6 +62,8 @@ export class SyncEngine {
           status: 200,
           message: 'Connected to Cloudflare Worker',
           timestamp: data.timestamp,
+          authenticated: data.authenticated,
+          userId: data.userId,
         };
       }
 
@@ -55,7 +71,7 @@ export class SyncEngine {
         return {
           ok: false,
           status: 401,
-          message: 'Unauthorized: Invalid or missing sync passcode',
+          message: 'Unauthorized: Invalid or missing authorization token',
         };
       }
 
@@ -79,7 +95,7 @@ export class SyncEngine {
 
   public async sync(
     workerUrl: string,
-    syncPasscode: string | undefined,
+    authTokenOrPasscode: string | undefined,
     payload: SyncRequestPayload
   ): Promise<SyncResponsePayload> {
     const formatted = this.formatUrl(workerUrl);
@@ -87,12 +103,10 @@ export class SyncEngine {
       throw new Error('Worker URL is not configured');
     }
 
-    const headers: HeadersInit = {
+    const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (syncPasscode) {
-      headers['X-PT-Secret'] = syncPasscode.trim();
-    }
+    this.applyAuthHeaders(headers, authTokenOrPasscode);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
