@@ -4,11 +4,7 @@ import { Instrument, Session, InstrumentTier } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
 import { arcGradient, SWATCH_COLORS } from '../../utils/chart-utils';
 import { addDays, fmtDuration, startOfDay } from '../../utils/date-utils';
-import {
-  calculateAllInstrumentsRepetition,
-  REPETITION_INTERVALS,
-} from '../../utils/repetition-utils';
-
+import { calculateAllInstrumentsRepetition, REPETITION_INTERVALS } from '../../utils/repetition-utils';
 
 @customElement('pt-kit-view')
 export class PtKitView extends LitElement {
@@ -16,51 +12,68 @@ export class PtKitView extends LitElement {
     commonStyles,
     css`
       :host {
-        display: flex;
-        flex-direction: column;
+        display: block;
+        animation: fadeOnly 180ms ease-out both;
+        padding-bottom: 28px;
       }
 
       .kit-header {
-        padding: 26px 24px 4px;
         display: flex;
         justify-content: space-between;
         align-items: baseline;
+        margin-bottom: 4px;
       }
 
       .kit-title {
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 700;
         letter-spacing: -0.02em;
       }
 
       .kit-subtitle {
-        font-size: 11px;
+        font-size: 12px;
         color: #767668;
         margin-top: 3px;
       }
 
       .add-toggle-btn {
-        font-size: 12px;
+        font-size: 13px;
         font-weight: 700;
         color: #23241F;
         cursor: pointer;
         background: transparent;
         border: none;
         padding: 4px 8px;
-        border-radius: 6px;
       }
 
       .add-toggle-btn.cancel {
         color: #767668;
       }
 
+      /* Add Instrument Card */
       .add-card {
-        margin: 14px 24px 0;
         background: #FFF;
-        border-radius: 16px;
+        border-radius: 18px;
         padding: 16px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
-        animation: fadeIn 0.15s ease-out;
+        margin-top: 14px;
+        box-shadow: 0 4px 16px rgba(35, 36, 31, 0.05);
+        animation: sheetIn 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+      }
+
+      .add-input {
+        width: 100%;
+        border: 1px solid #E4E3DC;
+        border-radius: 12px;
+        padding: 11px 13px;
+        font-size: 14px;
+        margin-bottom: 12px;
+        background: #FBFBF9;
+        color: #23241F;
+        outline: none;
+      }
+
+      .add-input:focus {
+        border-color: #23241F;
       }
 
       .swatches-row {
@@ -76,7 +89,7 @@ export class PtKitView extends LitElement {
         border-radius: 50%;
         cursor: pointer;
         border: none;
-        transition: transform 0.1s ease;
+        transition: transform 120ms ease;
       }
 
       .swatch-btn.selected {
@@ -86,8 +99,8 @@ export class PtKitView extends LitElement {
 
       .tier-segment {
         display: flex;
-        background: #E1E1DB;
-        border-radius: 10px;
+        background: #EFEEE9;
+        border-radius: 12px;
         padding: 3px;
         margin-bottom: 14px;
       }
@@ -95,234 +108,267 @@ export class PtKitView extends LitElement {
       .tier-option {
         flex: 1;
         text-align: center;
-        padding: 7px 0;
-        border-radius: 8px;
+        padding: 8px 0;
+        border-radius: 9px;
         font-size: 12px;
         font-weight: 700;
         cursor: pointer;
         border: none;
         background: transparent;
         color: #767668;
+        transition: background-color 160ms ease, color 160ms ease;
       }
 
       .tier-option.active {
         background: #FFF;
         color: #23241F;
+        box-shadow: 0 2px 6px rgba(35, 36, 31, 0.06);
       }
 
-      .primary-group {
-        padding: 20px 24px 4px;
+      .btn-confirm-add {
+        background: #23241F;
+        color: #F2F1EC;
+        border-radius: 12px;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+        width: 100%;
+        transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 160ms ease-out;
+      }
+
+      .btn-confirm-add:active {
+        transform: scale(0.975);
+      }
+
+      /* Main Kit Grid */
+      .kit-grid {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 20px;
+        align-items: start;
+        margin-top: 20px;
+      }
+
+      @media (min-width: 900px) {
+        .kit-grid {
+          grid-template-columns: 1fr 1fr;
+          gap: 28px;
+        }
+      }
+
+      /* Rings Column */
+      .rings-column {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .primary-rings-wrap {
         display: flex;
         justify-content: center;
-        gap: 22px;
+        gap: 26px;
         flex-wrap: wrap;
       }
 
-      .secondary-group {
-        padding: 16px 24px 24px;
+      .secondary-rings-wrap {
         display: flex;
         justify-content: center;
-        gap: 16px;
+        gap: 18px;
         flex-wrap: wrap;
+        margin-top: 26px;
       }
 
-      .ring-item {
+      .ring-card {
         display: flex;
         flex-direction: column;
         align-items: center;
         gap: 8px;
         position: relative;
-        cursor: pointer;
+        perspective: 700px;
+        user-select: none;
       }
 
-      .remove-chip {
+      .ring-card.primary {
+        width: 128px;
+      }
+
+      .ring-card.secondary {
+        width: 106px;
+        gap: 7px;
+        perspective: 620px;
+      }
+
+      .remove-btn {
         position: absolute;
         top: -4px;
-        right: 4px;
+        right: 8px;
         width: 20px;
         height: 20px;
         border-radius: 50%;
         background: #FFF;
         color: #767668;
-        font-size: 12px;
+        font-size: 13px;
         display: flex;
         align-items: center;
         justify-content: center;
         cursor: pointer;
-        z-index: 1;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        z-index: 2;
+        border: none;
+        box-shadow: 0 2px 6px rgba(35, 36, 31, 0.12);
+        transition: transform 120ms ease;
       }
 
-      .primary-ring {
-        width: 100px;
-        height: 100px;
+      .remove-btn:active {
+        transform: scale(0.92);
+      }
+
+      .arc-ring-outer {
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
+        transition: transform 170ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        transform-style: preserve-3d;
       }
 
-      .primary-inner {
-        width: 78px;
-        height: 78px;
-        border-radius: 50%;
-        background: #EDEDE9;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        font-weight: 700;
+      .primary .arc-ring-outer {
+        width: 104px;
+        height: 104px;
       }
 
-      .secondary-ring {
-        width: 76px;
-        height: 76px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      .secondary .arc-ring-outer {
+        width: 80px;
+        height: 80px;
       }
 
-      .secondary-inner {
-        width: 58px;
-        height: 58px;
+      .arc-ring-inner {
         border-radius: 50%;
         background: #EDEDE9;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 12px;
         font-weight: 700;
       }
 
-      .ring-name {
+      .primary .arc-ring-inner {
+        width: 80px;
+        height: 80px;
+        font-size: 17px;
+      }
+
+      .secondary .arc-ring-inner {
+        width: 62px;
+        height: 62px;
         font-size: 13px;
+      }
+
+      .ring-inst-name {
         font-weight: 700;
         text-align: center;
       }
 
-      .secondary-name {
+      .primary .ring-inst-name {
+        font-size: 14px;
+      }
+
+      .secondary .ring-inst-name {
         font-size: 12px;
-        font-weight: 700;
+      }
+
+      .ring-inst-total {
+        color: #767668;
         text-align: center;
       }
 
-      .ring-total {
+      .primary .ring-inst-total {
         font-size: 11px;
-        color: #767668;
-        text-align: center;
       }
 
-      .secondary-total {
+      .secondary .ring-inst-total {
         font-size: 10px;
-        color: #767668;
-        text-align: center;
       }
 
-      .ring-step-track {
+      .steps-dots-row {
         display: flex;
-        gap: 3px;
+        gap: 4px;
         align-items: center;
-        margin-top: 2px;
       }
 
-      .step-dot {
+      .step-track-dot {
+        border-radius: 50%;
+      }
+
+      .primary .step-track-dot {
+        width: 6px;
+        height: 6px;
+      }
+
+      .secondary .step-track-dot {
         width: 5px;
         height: 5px;
-        border-radius: 50%;
-        background: #D4D3CB;
-        transition: all 0.2s ease;
       }
 
-      .step-dot.completed {
-        background: #23241F;
-      }
-
-      .step-dot.current {
-        transform: scale(1.25);
-      }
-
-      .ring-heat-status {
-        font-size: 10px;
+      .retention-pill {
+        border-radius: 999px;
         font-weight: 700;
-        letter-spacing: 0.02em;
-        color: #767668;
-        display: inline-flex;
-        align-items: center;
-        gap: 3px;
-        padding: 2px 6px;
-        border-radius: 6px;
-        background: rgba(0, 0, 0, 0.04);
-        max-width: 100%;
-        white-space: nowrap;
       }
 
-      .ring-heat-status.due,
-      .ring-heat-status.overdue {
-        background: #FEECE8;
-        color: #E05D44;
+      .primary .retention-pill {
+        padding: 4px 10px;
+        font-size: 11px;
       }
 
-      .heat-schedule-section {
-        margin: 12px 24px 32px;
+      .secondary .retention-pill {
+        padding: 3px 9px;
+        font-size: 10px;
+      }
+
+      /* Retention Schedule Card */
+      .schedule-panel {
         background: #FFF;
-        border-radius: 18px;
-        padding: 18px 20px;
-        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.04);
-      }
-
-      .schedule-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 14px;
+        border-radius: 22px;
+        padding: 20px;
+        box-shadow: 0 4px 16px rgba(35, 36, 31, 0.04);
       }
 
       .schedule-title {
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 700;
-        color: #23241F;
+        letter-spacing: -0.01em;
       }
 
       .schedule-subtitle {
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 12px;
         color: #767668;
+        margin-top: 3px;
       }
 
-      .schedule-list {
+      .schedule-rows-wrap {
         display: flex;
         flex-direction: column;
         gap: 10px;
+        margin-top: 16px;
       }
 
-      .schedule-row {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        padding: 10px 12px;
-        border-radius: 12px;
-        background: #F8F7F4;
-        border: 1px solid #ECEBE4;
-        cursor: pointer;
-        transition: transform 0.1s ease, border-color 0.15s ease;
+      .schedule-item-card {
+        border: 1px solid #EAE9E2;
+        border-radius: 16px;
+        padding: 13px;
+        animation: riseIn 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
       }
 
-      .schedule-row:hover {
-        border-color: #D4D3CB;
-      }
-
-      .schedule-row:active {
-        transform: scale(0.99);
-      }
-
-      .schedule-row-top {
+      .schedule-item-top {
         display: flex;
         justify-content: space-between;
         align-items: center;
+        margin-bottom: 11px;
       }
 
-      .schedule-inst-info {
+      .schedule-inst-label {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -330,90 +376,38 @@ export class PtKitView extends LitElement {
         font-weight: 700;
       }
 
-      .schedule-color-dot {
-        width: 10px;
-        height: 10px;
+      .inst-color-indicator {
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
       }
 
-      .schedule-status-badge {
-        font-size: 11px;
-        font-weight: 700;
-        padding: 3px 8px;
-        border-radius: 8px;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-      }
-
-      .schedule-status-badge.due {
-        background: #E05D44;
-        color: #FFF;
-      }
-
-      .schedule-status-badge.overdue {
-        background: #D94838;
-        color: #FFF;
-      }
-
-      .schedule-status-badge.hot,
-      .schedule-status-badge.warm {
-        background: #FDF3E5;
-        color: #B57D1E;
-      }
-
-      .schedule-status-badge.cool {
-        background: #EFF4EE;
-        color: #556B58;
-      }
-
-      .schedule-status-badge.cold,
-      .schedule-status-badge.new {
-        background: #EAE9E2;
-        color: #767668;
-      }
-
-      .milestone-track {
+      .schedule-grid-cells {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        gap: 4px;
-        margin-top: 2px;
+        gap: 5px;
       }
 
-      .milestone-step {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        padding: 4px 0;
-        border-radius: 6px;
-        background: #E5E4DC;
-        font-size: 9px;
-        font-weight: 700;
-        color: #767668;
-        transition: all 0.2s ease;
-      }
-
-      .milestone-step.completed {
-        background: #23241F;
-        color: #F5F2F6;
-      }
-
-      .milestone-step.active {
-        box-shadow: 0 0 0 2px #23241F;
-      }
-
-      .milestone-step.active.due,
-      .milestone-step.active.overdue {
-        background: #E05D44;
-        color: #FFF;
-        box-shadow: 0 0 0 2px #E05D44;
-      }
-
-      .empty-kit-notice {
+      .milestone-cell {
+        border-radius: 10px;
+        padding: 8px 0;
         text-align: center;
-        padding: 30px 20px;
-        font-size: 13px;
-        color: #767668;
+        border: 1px solid transparent;
+        transition: background-color 200ms ease-out, color 200ms ease-out, border-color 200ms ease-out;
+      }
+
+      .cell-step-title {
+        display: block;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+      }
+
+      .cell-interval-desc {
+        display: block;
+        font-size: 10px;
+        opacity: 0.7;
+        margin-top: 2px;
       }
     `,
   ];
@@ -425,6 +419,38 @@ export class PtKitView extends LitElement {
   @state() private addName = '';
   @state() private addColor = SWATCH_COLORS[0];
   @state() private addTier: InstrumentTier = 'secondary';
+  @state() private tiltMap: Record<string, { rx: number; ry: number }> = {};
+
+  private tiltRafId: number | null = null;
+
+  private handleCardMouseMove(id: string, e: MouseEvent) {
+    if (window.innerWidth < 900) return;
+    if (this.tiltRafId) return;
+
+    const currentTarget = e.currentTarget as HTMLElement;
+    const rect = currentTarget.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+
+    this.tiltRafId = requestAnimationFrame(() => {
+      this.tiltRafId = null;
+      this.tiltMap = {
+        ...this.tiltMap,
+        [id]: {
+          rx: Number((-y * 12).toFixed(2)),
+          ry: Number((x * 12).toFixed(2)),
+        },
+      };
+    });
+  }
+
+  private handleCardMouseLeave(id: string) {
+    if (this.tiltMap[id]) {
+      const copy = { ...this.tiltMap };
+      delete copy[id];
+      this.tiltMap = copy;
+    }
+  }
 
   private toggleAdd() {
     this.addOpen = !this.addOpen;
@@ -455,16 +481,6 @@ export class PtKitView extends LitElement {
     this.addName = '';
   }
 
-  private handleEdit(inst: Instrument) {
-    this.dispatchEvent(
-      new CustomEvent('open-edit-instrument', {
-        detail: { instrument: inst },
-        bubbles: true,
-        composed: true,
-      })
-    );
-  }
-
   private handleRemove(e: Event, instId: string) {
     e.stopPropagation();
     this.dispatchEvent(
@@ -480,13 +496,12 @@ export class PtKitView extends LitElement {
     const today = startOfDay(new Date());
     const cutoff42d = addDays(today, -42);
 
-    // Filter sessions in last 42 days
+    // Filter sessions in last 42 days for rotation breakdown
     const recentSessions = this.sessions.filter((s) => new Date(s.start) >= cutoff42d);
-
     const activeInstruments = this.instruments.filter((i) => !i.archived);
     const repetitionMap = calculateAllInstrumentsRepetition(activeInstruments, this.sessions, today);
 
-    // Compute totals per instrument
+    // Calculate rotation proportions
     const durationByInst: Record<string, number> = {};
     let totalAllMinutes = 0;
 
@@ -498,8 +513,8 @@ export class PtKitView extends LitElement {
     const grandTotal = Math.max(1, totalAllMinutes);
     const removable = activeInstruments.length > 1;
 
-    const primaryList = activeInstruments.filter((i) => i.tier === 'primary');
-    const secondaryList = activeInstruments.filter((i) => i.tier === 'secondary');
+    const primaryInsts = activeInstruments.filter((i) => i.tier === 'primary');
+    const secondaryInsts = activeInstruments.filter((i) => i.tier !== 'primary');
 
     return html`
       <div class="kit-header">
@@ -515,24 +530,24 @@ export class PtKitView extends LitElement {
         </button>
       </div>
 
-      <!-- Add Instrument Form -->
+      <!-- Expandable Add Card -->
       ${this.addOpen
         ? html`
             <div class="add-card">
               <input
-                type="text"
-                class="form-input"
-                style="margin-bottom: 12px;"
-                placeholder="Instrument name (e.g., Drums, Vocals)"
+                class="add-input"
+                placeholder="Instrument name"
                 .value=${this.addName}
                 @input=${(e: Event) => (this.addName = (e.target as HTMLInputElement).value)}
-                @keydown=${(e: KeyboardEvent) => e.key === 'Enter' && this.handleAddConfirm()}
+                @keydown=${(e: KeyboardEvent) => {
+                  if (e.key === 'Enter') this.handleAddConfirm();
+                }}
               />
+
               <div class="swatches-row">
                 ${SWATCH_COLORS.map(
                   (c) => html`
                     <button
-                      type="button"
                       class="swatch-btn ${this.addColor === c ? 'selected' : ''}"
                       style="background: ${c};"
                       @click=${() => (this.addColor = c)}
@@ -540,207 +555,241 @@ export class PtKitView extends LitElement {
                   `
                 )}
               </div>
+
               <div class="tier-segment">
                 <button
-                  type="button"
                   class="tier-option ${this.addTier === 'primary' ? 'active' : ''}"
                   @click=${() => (this.addTier = 'primary')}
                 >
                   Primary
                 </button>
                 <button
-                  type="button"
                   class="tier-option ${this.addTier === 'secondary' ? 'active' : ''}"
                   @click=${() => (this.addTier = 'secondary')}
                 >
                   Secondary
                 </button>
               </div>
-              <button class="btn btn-primary" @click=${this.handleAddConfirm}>
+
+              <button
+                data-tap
+                class="btn-confirm-add"
+                @click=${this.handleAddConfirm}
+              >
                 Add to kit
               </button>
             </div>
           `
-        : html``}
+        : ''}
 
-      <!-- Primary Instruments -->
-      <div class="primary-group">
-        ${primaryList.map((inst) => {
-          const min = durationByInst[inst.id] || 0;
-          const pct = totalAllMinutes > 0 ? Math.round((min / grandTotal) * 100) : 0;
-          const ringBg = arcGradient(inst.color, pct);
-          const rep = repetitionMap.get(inst.id);
+      <!-- Main Dual-Column Grid -->
+      <div class="kit-grid">
+        <!-- Left: Instrument Proportion Rings -->
+        <div class="rings-column">
+          <!-- Primary Tier -->
+          <div class="primary-rings-wrap">
+            ${primaryInsts.map((inst) => {
+              const totalMin = durationByInst[inst.id] || 0;
+              const pct = Math.round((totalMin / grandTotal) * 100);
+              const rep = repetitionMap.get(inst.id);
+              const isDue = rep ? rep.isDueToday || rep.isOverdue : false;
+              const pillText = isDue ? 'Due today' : rep ? `In ${Math.max(0, rep.daysRemaining)}d` : '1d';
+              const pillBg = isDue ? '#F6DED7' : '#EFEEE9';
+              const pillColor = isDue ? '#B4543C' : '#767668';
 
-          return html`
-            <div class="ring-item" @click=${() => this.handleEdit(inst)}>
-              ${removable
-                ? html`
-                    <span
-                      class="remove-chip"
-                      title="Remove"
-                      @click=${(e: Event) => this.handleRemove(e, inst.id)}
-                    >
-                      &times;
+              const tilt = this.tiltMap[inst.id];
+              const tiltTransform = tilt ? `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)` : 'rotateX(0deg) rotateY(0deg)';
+
+              return html`
+                <div
+                  class="ring-card primary"
+                  @mousemove=${(e: MouseEvent) => this.handleCardMouseMove(inst.id, e)}
+                  @mouseleave=${() => this.handleCardMouseLeave(inst.id)}
+                >
+                  ${removable
+                    ? html`
+                        <button
+                          class="remove-btn"
+                          title="Remove instrument"
+                          @click=${(e: Event) => this.handleRemove(e, inst.id)}
+                        >
+                          &times;
+                        </button>
+                      `
+                    : ''}
+                  <div
+                    class="arc-ring-outer"
+                    style="background: ${arcGradient(inst.color, pct)}; transform: ${tiltTransform};"
+                  >
+                    <div class="arc-ring-inner" style="color: ${inst.color};">
+                      ${pct}%
+                    </div>
+                  </div>
+                  <div class="ring-inst-name">${inst.name}</div>
+                  <div class="ring-inst-total">${fmtDuration(totalMin)}</div>
+                  <div class="steps-dots-row">
+                    ${REPETITION_INTERVALS.map((_, i) => {
+                      const completed = rep ? i < rep.step : false;
+                      const isCurrent = rep ? i === Math.max(0, rep.step - 1) : i === 0;
+                      const dotColor = completed ? inst.color : isCurrent ? (isDue ? '#B4543C' : inst.color) : '#D9D8D0';
+                      return html`
+                        <span
+                          class="step-track-dot"
+                          style="background: ${dotColor};"
+                        ></span>
+                      `;
+                    })}
+                  </div>
+                  <div
+                    class="retention-pill"
+                    style="background: ${pillBg}; color: ${pillColor};"
+                  >
+                    ${pillText}
+                  </div>
+                </div>
+              `;
+            })}
+          </div>
+
+          <!-- Secondary Tier -->
+          <div class="secondary-rings-wrap">
+            ${secondaryInsts.map((inst) => {
+              const totalMin = durationByInst[inst.id] || 0;
+              const pct = Math.round((totalMin / grandTotal) * 100);
+              const rep = repetitionMap.get(inst.id);
+              const isDue = rep ? rep.isDueToday || rep.isOverdue : false;
+              const pillText = isDue ? 'Due today' : rep ? `In ${Math.max(0, rep.daysRemaining)}d` : '1d';
+              const pillBg = isDue ? '#F6DED7' : '#EFEEE9';
+              const pillColor = isDue ? '#B4543C' : '#767668';
+
+              const tilt = this.tiltMap[inst.id];
+              const tiltTransform = tilt ? `rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)` : 'rotateX(0deg) rotateY(0deg)';
+
+              return html`
+                <div
+                  class="ring-card secondary"
+                  @mousemove=${(e: MouseEvent) => this.handleCardMouseMove(inst.id, e)}
+                  @mouseleave=${() => this.handleCardMouseLeave(inst.id)}
+                >
+                  ${removable
+                    ? html`
+                        <button
+                          class="remove-btn"
+                          title="Remove instrument"
+                          @click=${(e: Event) => this.handleRemove(e, inst.id)}
+                        >
+                          &times;
+                        </button>
+                      `
+                    : ''}
+                  <div
+                    class="arc-ring-outer"
+                    style="background: ${arcGradient(inst.color, pct)}; transform: ${tiltTransform};"
+                  >
+                    <div class="arc-ring-inner" style="color: ${inst.color};">
+                      ${pct}%
+                    </div>
+                  </div>
+                  <div class="ring-inst-name">${inst.name}</div>
+                  <div class="ring-inst-total">${fmtDuration(totalMin)}</div>
+                  <div class="steps-dots-row">
+                    ${REPETITION_INTERVALS.map((_, i) => {
+                      const completed = rep ? i < rep.step : false;
+                      const isCurrent = rep ? i === Math.max(0, rep.step - 1) : i === 0;
+                      const dotColor = completed ? inst.color : isCurrent ? (isDue ? '#B4543C' : inst.color) : '#D9D8D0';
+                      return html`
+                        <span
+                          class="step-track-dot"
+                          style="background: ${dotColor};"
+                        ></span>
+                      `;
+                    })}
+                  </div>
+                  <div
+                    class="retention-pill"
+                    style="background: ${pillBg}; color: ${pillColor};"
+                  >
+                    ${pillText}
+                  </div>
+                </div>
+              `;
+            })}
+          </div>
+        </div>
+
+        <!-- Right: 5-Step Leitner Retention Schedule -->
+        <div class="schedule-panel">
+          <div class="schedule-title">Retention schedule</div>
+          <div class="schedule-subtitle">1 → 3 → 7 → 14 → 30 day intervals</div>
+
+          <div class="schedule-rows-wrap">
+            ${activeInstruments.map((inst, idx) => {
+              const rep = repetitionMap.get(inst.id);
+              const isDue = rep ? rep.isDueToday || rep.isOverdue : false;
+              const pillText = isDue ? 'Due today' : rep ? `In ${Math.max(0, rep.daysRemaining)}d` : '1d';
+              const pillBg = isDue ? '#F6DED7' : '#EFEEE9';
+              const pillColor = isDue ? '#B4543C' : '#767668';
+
+              return html`
+                <div
+                  class="schedule-item-card"
+                  style="animation-delay: ${80 + idx * 45}ms;"
+                >
+                  <div class="schedule-item-top">
+                    <span class="schedule-inst-label">
+                      <span
+                        class="inst-color-indicator"
+                        style="background: ${inst.color};"
+                      ></span>
+                      ${inst.name}
                     </span>
-                  `
-                : html``}
-              <div class="primary-ring" style="background: ${ringBg};">
-                <div class="primary-inner" style="color: ${inst.color};">
-                  ${pct}%
-                </div>
-              </div>
-              <div class="ring-name">${inst.name}</div>
-              <div class="ring-total">${fmtDuration(min)}</div>
-              ${rep
-                ? html`
-                    <div class="ring-step-track" title="${rep.label}">
-                      ${REPETITION_INTERVALS.map((_, idx) => {
-                        const stepNum = idx + 1;
-                        const isCompleted = rep.step > stepNum;
-                        const isCurrent = rep.step === stepNum;
-                        return html`
-                          <span
-                            class="step-dot ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}"
-                            style="${isCurrent ? `background: ${rep.isDueToday || rep.isOverdue ? '#E05D44' : inst.color};` : ''}"
-                          ></span>
-                        `;
-                      })}
-                    </div>
-                    <div class="ring-heat-status ${rep.status}">
-                      ${rep.isDueToday
-                        ? html`🔥 Due Today`
-                        : rep.isOverdue
-                        ? html`⚠️ Overdue`
-                        : rep.step > 0
-                        ? html`Step ${rep.step}/5 · ${rep.intervalDays}d`
-                        : html`Ready · 1d`}
-                    </div>
-                  `
-                : html``}
-            </div>
-          `;
-        })}
-      </div>
-
-      <!-- Secondary Instruments -->
-      <div class="secondary-group">
-        ${secondaryList.map((inst) => {
-          const min = durationByInst[inst.id] || 0;
-          const pct = totalAllMinutes > 0 ? Math.round((min / grandTotal) * 100) : 0;
-          const ringBg = arcGradient(inst.color, pct);
-          const rep = repetitionMap.get(inst.id);
-
-          return html`
-            <div class="ring-item" @click=${() => this.handleEdit(inst)}>
-              ${removable
-                ? html`
                     <span
-                      class="remove-chip"
-                      title="Remove"
-                      @click=${(e: Event) => this.handleRemove(e, inst.id)}
+                      class="retention-pill"
+                      style="background: ${pillBg}; color: ${pillColor}; padding: 4px 10px; font-size: 11px;"
                     >
-                      &times;
+                      ${pillText}
                     </span>
-                  `
-                : html``}
-              <div class="secondary-ring" style="background: ${ringBg};">
-                <div class="secondary-inner" style="color: ${inst.color};">
-                  ${pct}%
-                </div>
-              </div>
-              <div class="secondary-name">${inst.name}</div>
-              <div class="secondary-total">${fmtDuration(min)}</div>
-              ${rep
-                ? html`
-                    <div class="ring-step-track" title="${rep.label}">
-                      ${REPETITION_INTERVALS.map((_, idx) => {
-                        const stepNum = idx + 1;
-                        const isCompleted = rep.step > stepNum;
-                        const isCurrent = rep.step === stepNum;
-                        return html`
-                          <span
-                            class="step-dot ${isCompleted ? 'completed' : ''} ${isCurrent ? 'current' : ''}"
-                            style="${isCurrent ? `background: ${rep.isDueToday || rep.isOverdue ? '#E05D44' : inst.color};` : ''}"
-                          ></span>
-                        `;
-                      })}
-                    </div>
-                    <div class="ring-heat-status ${rep.status}">
-                      ${rep.isDueToday
-                        ? html`🔥 Due Today`
-                        : rep.isOverdue
-                        ? html`⚠️ Overdue`
-                        : rep.step > 0
-                        ? html`Step ${rep.step}/5 · ${rep.intervalDays}d`
-                        : html`Ready · 1d`}
-                    </div>
-                  `
-                : html``}
-            </div>
-          `;
-        })}
-      </div>
+                  </div>
 
-      <!-- Spaced Repetition Heat Matrix Section -->
-      ${activeInstruments.length > 0
-        ? html`
-            <div class="heat-schedule-section">
-              <div class="schedule-header">
-                <div>
-                  <div class="schedule-title">Heat Retention Schedule</div>
-                  <div class="schedule-subtitle">1 → 3 → 7 → 14 → 30 day intervals</div>
-                </div>
-              </div>
+                  <div class="schedule-grid-cells">
+                    ${REPETITION_INTERVALS.map((iv, i) => {
+                      const current = rep ? i === Math.max(0, rep.step - 1) : i === 0;
+                      const done = rep ? i < rep.step - 1 : false;
 
-              <div class="schedule-list">
-                ${activeInstruments.map((inst) => {
-                  const rep = repetitionMap.get(inst.id);
-                  if (!rep) return html``;
+                      let cellBg = done ? '#F2F1EA' : '#F7F6F1';
+                      let cellColor = done ? '#767668' : '#A3A297';
+                      let cellBorder = 'transparent';
 
-                  return html`
-                    <div class="schedule-row" @click=${() => this.handleEdit(inst)}>
-                      <div class="schedule-row-top">
-                        <div class="schedule-inst-info">
-                          <span class="schedule-color-dot" style="background: ${inst.color};"></span>
-                          <span>${inst.name}</span>
-                          ${rep.cycleCount > 0
-                            ? html`<span style="font-size: 10px; color: #767668; font-weight: 600;">(Cycle ${rep.cycleCount + 1})</span>`
-                            : html``}
+                      if (current) {
+                        if (isDue) {
+                          cellBg = '#B4543C';
+                          cellColor = '#FBF6F3';
+                          cellBorder = '#B4543C';
+                        } else {
+                          cellBg = '#FFFFFF';
+                          cellColor = '#23241F';
+                          cellBorder = '#23241F';
+                        }
+                      }
+
+                      return html`
+                        <div
+                          class="milestone-cell"
+                          style="background: ${cellBg}; color: ${cellColor}; border-color: ${cellBorder};"
+                        >
+                          <span class="cell-step-title">Step ${i + 1}</span>
+                          <span class="cell-interval-desc">${iv}d</span>
                         </div>
-                        <span class="schedule-status-badge ${rep.status}">
-                          ${rep.isDueToday
-                            ? html`🔥 Due Today`
-                            : rep.isOverdue
-                            ? html`⚠️ Overdue by ${Math.abs(rep.daysRemaining)}d`
-                            : rep.step > 0
-                            ? html`In ${rep.daysRemaining}d`
-                            : html`Ready for Step 1`}
-                        </span>
-                      </div>
-
-                      <div class="milestone-track">
-                        ${REPETITION_INTERVALS.map((intDays, idx) => {
-                          const stepNum = idx + 1;
-                          const isCompleted = rep.step > stepNum;
-                          const isCurrent = rep.step === stepNum;
-
-                          return html`
-                            <div
-                              class="milestone-step ${isCompleted ? 'completed' : ''} ${isCurrent ? `active ${rep.status}` : ''}"
-                            >
-                              <span>Step ${stepNum}</span>
-                              <span>${intDays}d</span>
-                            </div>
-                          `;
-                        })}
-                      </div>
-                    </div>
-                  `;
-                })}
-              </div>
-            </div>
-          `
-        : html``}
+                      `;
+                    })}
+                  </div>
+                </div>
+              `;
+            })}
+          </div>
+        </div>
+      </div>
     `;
   }
 }
+

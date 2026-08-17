@@ -186,3 +186,59 @@ export function getHeatColor(status: InstrumentHeatStatus): string {
       return '#A3A297'; // Neutral
   }
 }
+
+/**
+ * Returns the exact badge properties for rendering instrument chips on Main view
+ */
+export function getRepetitionBadge(
+  state: InstrumentRepetitionState,
+  isPrimary: boolean,
+  instColor: string
+): {
+  badgeText: string;
+  badgeBg: string;
+  badgeColor: string;
+  badgeDot: string;
+  isDue: boolean;
+} {
+  const isDue = state.isDueToday || state.isOverdue || state.status === 'due' || state.status === 'overdue';
+  const practicedToday = state.lastPracticedAt && isSameCalendarDay(new Date(state.lastPracticedAt), new Date());
+
+  if (isDue) {
+    return {
+      badgeText: 'Due',
+      badgeBg: '#B4543C',
+      badgeColor: '#FBF6F3',
+      badgeDot: '#FBF6F3',
+      isDue: true,
+    };
+  }
+
+  if (practicedToday) {
+    return {
+      badgeText: `${Math.max(1, state.step)}/5`,
+      badgeBg: isPrimary ? 'rgba(255, 255, 255, 0.22)' : '#EFEEE9',
+      badgeColor: isPrimary ? '#F5F2F6' : '#767668',
+      badgeDot: isPrimary ? '#F5F2F6' : instColor,
+      isDue: false,
+    };
+  }
+
+  return {
+    badgeText: `${Math.max(0, state.daysRemaining)}d`,
+    badgeBg: isPrimary ? 'rgba(255, 255, 255, 0.22)' : '#EFEEE9',
+    badgeColor: isPrimary ? '#F5F2F6' : '#767668',
+    badgeDot: '#A3A297',
+    isDue: false,
+  };
+}
+
+function isSameCalendarDay(d1: Date, d2: Date): boolean {
+  return (
+    d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate()
+  );
+}
+
+

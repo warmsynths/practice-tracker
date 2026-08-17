@@ -21,22 +21,38 @@ export function playStartSound(enabled = true): void {
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    const playBell = (freq: number, startTime: number, dur: number, vol: number) => {
+      const osc = ctx.createOscillator();
+      const overtone = ctx.createOscillator();
+      const gain = ctx.createGain();
+      const overtoneGain = ctx.createGain();
 
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(440, now); // A4
-    osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); // A5
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime);
+      overtone.type = 'sine';
+      overtone.frequency.setValueAtTime(freq * 2, startTime);
 
-    gain.gain.setValueAtTime(0.001, now);
-    gain.gain.linearRampToValueAtTime(0.12, now + 0.03);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.2);
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(vol, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
 
-    osc.connect(gain);
-    gain.connect(ctx.destination);
+      overtoneGain.gain.setValueAtTime(0.0001, startTime);
+      overtoneGain.gain.exponentialRampToValueAtTime(vol * 0.25, startTime + 0.015);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur * 0.6);
 
-    osc.start(now);
-    osc.stop(now + 0.2);
+      osc.connect(gain);
+      overtone.connect(overtoneGain);
+      gain.connect(ctx.destination);
+      overtoneGain.connect(ctx.destination);
+
+      osc.start(startTime);
+      overtone.start(startTime);
+      osc.stop(startTime + dur + 0.05);
+      overtone.stop(startTime + dur + 0.05);
+    };
+
+    playBell(523.25, now, 0.5, 0.1);       // C5
+    playBell(659.25, now + 0.1, 0.8, 0.12); // E5
   } catch {
     // Graceful fallback if audio is blocked
   }
@@ -49,24 +65,39 @@ export function playEndSound(enabled = true): void {
     if (!ctx) return;
     const now = ctx.currentTime;
 
-    // Harmonic two-tone chord
-    [523.25, 659.25, 783.99].forEach((freq, i) => { // C5, E5, G5
+    const playBell = (freq: number, startTime: number, dur: number, vol: number) => {
       const osc = ctx.createOscillator();
+      const overtone = ctx.createOscillator();
       const gain = ctx.createGain();
+      const overtoneGain = ctx.createGain();
 
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(freq, now + i * 0.06);
+      osc.frequency.setValueAtTime(freq, startTime);
+      overtone.type = 'sine';
+      overtone.frequency.setValueAtTime(freq * 2, startTime);
 
-      gain.gain.setValueAtTime(0.001, now + i * 0.06);
-      gain.gain.linearRampToValueAtTime(0.08, now + i * 0.06 + 0.04);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + i * 0.06 + 0.45);
+      gain.gain.setValueAtTime(0.0001, startTime);
+      gain.gain.exponentialRampToValueAtTime(vol, startTime + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur);
+
+      overtoneGain.gain.setValueAtTime(0.0001, startTime);
+      overtoneGain.gain.exponentialRampToValueAtTime(vol * 0.25, startTime + 0.015);
+      overtoneGain.gain.exponentialRampToValueAtTime(0.0001, startTime + dur * 0.6);
 
       osc.connect(gain);
+      overtone.connect(overtoneGain);
       gain.connect(ctx.destination);
+      overtoneGain.connect(ctx.destination);
 
-      osc.start(now + i * 0.06);
-      osc.stop(now + i * 0.06 + 0.5);
-    });
+      osc.start(startTime);
+      overtone.start(startTime);
+      osc.stop(startTime + dur + 0.05);
+      overtone.stop(startTime + dur + 0.05);
+    };
+
+    playBell(523.25, now, 0.5, 0.1);        // C5
+    playBell(659.25, now + 0.09, 0.6, 0.11); // E5
+    playBell(783.99, now + 0.18, 1.1, 0.13); // G5
   } catch {
     // Graceful fallback
   }
@@ -82,18 +113,18 @@ export function playClickSound(enabled = true): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(320, now);
-    osc.frequency.exponentialRampToValueAtTime(160, now + 0.04);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(420, now);
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.035);
 
-    gain.gain.setValueAtTime(0.05, now);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+    gain.gain.setValueAtTime(0.04, now);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     osc.start(now);
-    osc.stop(now + 0.05);
+    osc.stop(now + 0.04);
   } catch {
     // Graceful fallback
   }
@@ -109,3 +140,4 @@ export function triggerHaptic(pattern: number | number[] = 15, enabled = true): 
     // Graceful fallback
   }
 }
+

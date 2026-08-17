@@ -11,28 +11,26 @@ export class PtDataView extends LitElement {
     commonStyles,
     css`
       :host {
-        display: flex;
-        flex-direction: column;
-      }
-
-      .data-header {
-        padding: 26px 24px 0;
+        display: block;
+        animation: fadeOnly 180ms ease-out both;
+        padding-bottom: 28px;
       }
 
       .data-title {
-        font-size: 22px;
+        font-size: 24px;
         font-weight: 700;
         letter-spacing: -0.02em;
       }
 
       .period-toggle-wrap {
-        padding: 16px 24px 0;
+        margin-top: 16px;
+        max-width: 460px;
       }
 
       .period-toggle {
         display: flex;
-        background: #E1E1DB;
-        border-radius: 12px;
+        background: #E4E3DD;
+        border-radius: 14px;
         padding: 4px;
         gap: 4px;
       }
@@ -40,43 +38,44 @@ export class PtDataView extends LitElement {
       .period-tab {
         flex: 1;
         text-align: center;
-        padding: 8px 0;
-        border-radius: 9px;
+        padding: 9px 0;
+        border-radius: 10px;
         font-size: 12px;
         font-weight: 700;
         cursor: pointer;
         border: none;
         background: transparent;
         color: #767668;
-        transition: all 0.15s ease;
+        transition: background-color 180ms ease-out, color 180ms ease-out;
       }
 
       .period-tab.active {
         background: #FFF;
         color: #23241F;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        box-shadow: 0 2px 6px rgba(35, 36, 31, 0.06);
       }
 
       /* Day View */
       .day-view-wrap {
         display: flex;
         justify-content: center;
-        padding: 28px 0 10px;
+        padding: 34px 0 8px;
       }
 
       .day-donut-outer {
-        width: 190px;
-        height: 190px;
+        width: 200px;
+        height: 200px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
         transition: background 0.3s ease;
+        animation: popIn 320ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
       }
 
       .day-donut-inner {
-        width: 148px;
-        height: 148px;
+        width: 156px;
+        height: 156px;
         border-radius: 50%;
         background: #EDEDE9;
         display: flex;
@@ -86,7 +85,7 @@ export class PtDataView extends LitElement {
       }
 
       .day-total-num {
-        font-size: 30px;
+        font-size: 32px;
         font-weight: 700;
         letter-spacing: -0.02em;
       }
@@ -94,7 +93,7 @@ export class PtDataView extends LitElement {
       .day-total-label {
         font-size: 10px;
         color: #767668;
-        letter-spacing: 0.06em;
+        letter-spacing: 0.08em;
         margin-top: 3px;
         font-weight: 700;
       }
@@ -102,22 +101,21 @@ export class PtDataView extends LitElement {
       /* Week View */
       .metric-total-hero {
         text-align: center;
-        padding: 24px 0 2px;
-        font-size: 22px;
+        padding: 30px 0 4px;
+        font-size: 24px;
         font-weight: 700;
       }
 
       .metric-sub-hero {
         text-align: center;
-        font-size: 11px;
+        font-size: 12px;
         color: #767668;
-        margin-bottom: 16px;
+        margin-bottom: 20px;
       }
 
       .week-bars-container {
-        padding: 0 24px;
         display: flex;
-        gap: 8px;
+        gap: 10px;
         align-items: flex-end;
       }
 
@@ -127,21 +125,22 @@ export class PtDataView extends LitElement {
       }
 
       .bar-card {
-        height: 140px;
-        border-radius: 12px;
+        height: 170px;
+        border-radius: 14px;
         background: #FFF;
         display: flex;
         flex-direction: column-reverse;
         gap: 2px;
         padding: 5px;
         margin-bottom: 8px;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.02);
+        box-shadow: 0 4px 12px rgba(35, 36, 31, 0.03);
       }
 
       .bar-seg {
-        border-radius: 6px;
+        border-radius: 8px;
         display: block;
-        transition: height 0.25s ease;
+        transform-origin: bottom;
+        animation: barGrow 520ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
       }
 
       .bar-day-label {
@@ -158,32 +157,32 @@ export class PtDataView extends LitElement {
       .month-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 5px;
-        padding: 0 24px 4px;
+        gap: 6px;
+        max-width: 520px;
+        margin: 0 auto;
       }
 
       .grid-cell {
         aspect-ratio: 1;
-        border-radius: 4px;
-        transition: transform 0.1s ease;
+        border-radius: 6px;
+        animation: fadeOnly 300ms ease-out both;
       }
 
       /* Legend */
       .legend-container {
         display: flex;
         justify-content: center;
-        gap: 14px;
+        gap: 16px;
         flex-wrap: wrap;
-        padding: 20px 24px 16px;
+        padding: 26px 0 8px;
       }
 
       .legend-item {
         display: flex;
         align-items: center;
-        gap: 5px;
-        font-size: 10px;
+        gap: 6px;
+        font-size: 11px;
         color: #767668;
-        font-weight: 600;
       }
 
       .legend-dot {
@@ -194,9 +193,9 @@ export class PtDataView extends LitElement {
 
       /* Session History Section */
       .history-section {
-        padding: 12px 24px 24px;
+        padding: 16px 0 24px;
         border-top: 1px solid #E1E1DB;
-        margin-top: 10px;
+        margin-top: 16px;
       }
 
       .history-header {
@@ -207,7 +206,7 @@ export class PtDataView extends LitElement {
       }
 
       .history-title {
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 700;
         letter-spacing: -0.01em;
       }
@@ -220,18 +219,19 @@ export class PtDataView extends LitElement {
 
       .session-row {
         background: #FFF;
-        border-radius: 12px;
-        padding: 10px 14px;
+        border-radius: 14px;
+        padding: 12px 16px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         cursor: pointer;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-        transition: transform 0.1s ease;
+        box-shadow: 0 2px 6px rgba(35, 36, 31, 0.03);
+        transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), box-shadow 160ms ease;
       }
 
       .session-row:hover {
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(35, 36, 31, 0.08);
       }
 
       .session-left {
@@ -252,7 +252,7 @@ export class PtDataView extends LitElement {
       }
 
       .session-date-sub {
-        font-size: 10px;
+        font-size: 11px;
         color: #767668;
         margin-top: 1px;
       }
@@ -373,13 +373,11 @@ export class PtDataView extends LitElement {
       }
     }
 
-    // Recent 10 sessions for history list
+    // Recent sessions for history list
     const recentSessionsList = [...this.sessions].slice(0, 8);
 
     return html`
-      <div class="data-header">
-        <div class="data-title">Data</div>
-      </div>
+      <div class="data-title">Data</div>
 
       <!-- Segmented Period Toggle -->
       <div class="period-toggle-wrap">
@@ -414,13 +412,13 @@ export class PtDataView extends LitElement {
             <div class="day-view-wrap">
               <div class="day-donut-outer" style="background: ${dayDonutBg};">
                 <div class="day-donut-inner">
-                  <div class="day-total-num">${fmtDuration(dayTotalMin)}</div>
+                  <div class="day-total-num">${dayTotalMin ? fmtDuration(dayTotalMin) : '0′'}</div>
                   <div class="day-total-label">TODAY</div>
                 </div>
               </div>
             </div>
           `
-        : html``}
+        : ''}
 
       <!-- Week Period View -->
       ${this.period === 'week'
@@ -429,14 +427,14 @@ export class PtDataView extends LitElement {
             <div class="metric-sub-hero">this week</div>
             <div class="week-bars-container">
               ${weekBars.map(
-                (bar) => html`
+                (bar, idx) => html`
                   <div class="week-bar-col">
                     <div class="bar-card">
                       ${bar.segments.map(
                         (seg) => html`
                           <span
                             class="bar-seg"
-                            style="height: ${seg.heightPct}%; background: ${seg.color};"
+                            style="height: ${seg.heightPct}%; background: ${seg.color}; animation-delay: ${(6 - idx) * 45}ms;"
                           ></span>
                         `
                       )}
@@ -449,7 +447,7 @@ export class PtDataView extends LitElement {
               )}
             </div>
           `
-        : html``}
+        : ''}
 
       <!-- Month Period View -->
       ${this.period === 'month'
@@ -458,13 +456,16 @@ export class PtDataView extends LitElement {
             <div class="metric-sub-hero">last 6 weeks</div>
             <div class="month-grid">
               ${monthGrid.map(
-                (cell) => html`
-                  <span class="grid-cell" style="background: ${cell.color};"></span>
+                (cell, idx) => html`
+                  <span
+                    class="grid-cell"
+                    style="background: ${cell.color}; animation-delay: ${Math.round((41 - idx) * 8)}ms;"
+                  ></span>
                 `
               )}
             </div>
           `
-        : html``}
+        : ''}
 
       <!-- Legend -->
       <div class="legend-container">
@@ -523,3 +524,4 @@ export class PtDataView extends LitElement {
     `;
   }
 }
+

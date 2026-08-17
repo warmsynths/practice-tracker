@@ -22,151 +22,364 @@ export class PtApp extends LitElement {
     css`
       :host {
         display: block;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
         height: 100dvh;
+        overflow: hidden;
         background: #EDEDE9;
         font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
+        color: #23241F;
       }
 
-      .app-wrapper {
-        height: 100vh;
-        height: 100dvh;
+      .app-shell {
         width: 100%;
-        display: flex;
-        justify-content: center;
-        background: #EDEDE9;
-      }
-
-      .phone-shell {
-        width: 100%;
-        max-width: 440px;
+        max-width: 520px;
         height: 100%;
-        background: #EDEDE9;
+        height: 100dvh;
+        margin: 0 auto;
         display: flex;
         flex-direction: column;
-        color: #23241F;
+        background: #EDEDE9;
         position: relative;
+        overflow: hidden;
       }
 
-      .top-header {
-        padding: 16px 20px 0;
+      @media (min-width: 900px) {
+        :host {
+          height: 100vh;
+        }
+        .app-shell {
+          max-width: 1120px;
+          flex-direction: row;
+          height: 100vh;
+          overflow: hidden;
+        }
+      }
+
+      /* Desktop Sidebar */
+      .desktop-sidebar {
+        display: none;
+      }
+
+      @media (min-width: 900px) {
+        .desktop-sidebar {
+          width: 232px;
+          flex-shrink: 0;
+          border-right: 1px solid #E1E1DB;
+          padding: 34px 22px;
+          display: flex;
+          flex-direction: column;
+          gap: 30px;
+          height: 100vh;
+          overflow-y: auto;
+          position: sticky;
+          top: 0;
+        }
+      }
+
+      .sidebar-brand {
+        font-size: 17px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+
+      .sidebar-nav {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .sidebar-nav-item {
+        padding: 11px 14px;
+        border-radius: 12px;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background-color 180ms ease-out, color 180ms ease-out;
+        user-select: none;
+      }
+
+      .sidebar-nav-item.active {
+        background: #E4E3DD;
+        color: #23241F;
+        font-weight: 700;
+      }
+
+      .sidebar-nav-item.inactive {
+        background: transparent;
+        color: #767668;
+        font-weight: 400;
+      }
+
+      .sidebar-nav-item.inactive:hover {
+        background: rgba(228, 227, 221, 0.5);
+        color: #23241F;
+      }
+
+      .sidebar-footer {
+        margin-top: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .sidebar-sync-status {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        color: #767668;
+        cursor: pointer;
+      }
+
+      .status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #6B7F6E;
+      }
+
+      .status-dot.syncing {
+        background: #D4A340;
+        animation: softPulse 1.2s ease-in-out infinite;
+      }
+
+      .status-dot.error {
+        background: #B4543C;
+      }
+
+      .sidebar-user-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        cursor: pointer;
+      }
+
+      .avatar-badge {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        background: #DCDBD3;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 700;
+        color: #4A4945;
+        user-select: none;
+      }
+
+      /* Main Content Pane */
+      .content-pane {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+        height: 100%;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      @media (min-width: 900px) {
+        .content-pane {
+          height: 100vh;
+          overflow: hidden;
+        }
+      }
+
+      /* Mobile Header */
+      .mobile-header {
+        padding: 22px 20px 6px;
         display: flex;
         justify-content: space-between;
         align-items: center;
+        gap: 10px;
+        position: relative;
         flex-shrink: 0;
       }
 
-      .header-date-info {
-        display: flex;
-        gap: 12px;
-        font-size: 13px;
-        color: #767668;
-        font-weight: 500;
+      @media (min-width: 900px) {
+        .mobile-header {
+          display: none;
+        }
       }
 
-      .header-actions {
+      .mobile-date {
+        display: flex;
+        gap: 12px;
+        font-size: 14px;
+        color: #767668;
+      }
+
+      .mobile-header-actions {
         display: flex;
         align-items: center;
         gap: 8px;
       }
 
-      .auth-header-btn {
-        background: #23241F;
-        color: #F2F1EC;
-        border: none;
-        padding: 5px 12px;
-        border-radius: 14px;
-        font-size: 11px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: opacity 0.15s ease, transform 0.1s ease;
-      }
-
-      .auth-header-btn:hover {
-        opacity: 0.88;
-      }
-
-      .auth-header-btn:active {
-        transform: scale(0.96);
-      }
-
-      .user-avatar-btn {
-        background: #E1E1DB;
-        color: #23241F;
-        border: none;
-        width: 28px;
-        height: 28px;
-        border-radius: 50%;
+      .sync-tag-btn {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #DFE9DE;
+        color: #4F6353;
+        border-radius: 999px;
+        padding: 5px 11px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 500;
         cursor: pointer;
+        border: none;
+        transition: transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1), filter 160ms ease-out;
+      }
+
+      .sync-tag-btn:active {
+        transform: scale(0.975);
+      }
+
+      .settings-gear-btn {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: background 0.15s ease;
-      }
-
-      .user-avatar-btn:hover {
-        background: #D4D3CB;
-      }
-
-      .settings-icon-btn {
+        cursor: pointer;
+        color: #767668;
+        font-size: 16px;
         background: transparent;
         border: none;
-        cursor: pointer;
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #767668;
-        transition: background 0.15s ease, color 0.15s ease;
       }
 
-      .settings-icon-btn:hover {
+      .settings-gear-btn:hover {
         background: #E1E1DB;
         color: #23241F;
       }
 
-      .main-scroll-area {
+      /* Sync Popover */
+      .sync-popover {
+        position: absolute;
+        top: 58px;
+        right: 20px;
+        left: 20px;
+        background: #FFF;
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 18px 40px rgba(35, 36, 31, 0.14);
+        z-index: 50;
+        transform-origin: top right;
+        animation: popIn 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+
+      @media (min-width: 900px) {
+        .sync-popover {
+          left: auto;
+          right: auto;
+          bottom: 70px;
+          top: auto;
+          width: 280px;
+          margin-left: 10px;
+        }
+      }
+
+      .sync-popover-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        font-weight: 700;
+      }
+
+      .sync-popover-details {
+        font-size: 13px;
+        color: #767668;
+        margin-top: 10px;
+      }
+
+      .sync-popover-clock {
+        font-size: 12px;
+        color: #A3A297;
+        margin-top: 2px;
+      }
+
+      .sync-popover-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 14px;
+      }
+
+      .btn-sync-now {
+        flex: 1;
+        background: #23241F;
+        color: #F2F1EC;
+        border-radius: 12px;
+        height: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        border: none;
+      }
+
+      .btn-popover-gear {
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        background: #F0EFEA;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: #767668;
+        border: none;
+      }
+
+      /* Scrollable Views Area */
+      .views-scroll-area {
         flex: 1;
         overflow-y: auto;
+        overflow-x: hidden;
         -webkit-overflow-scrolling: touch;
-        scrollbar-width: none;
-        -ms-overflow-style: none;
+        padding: 10px 20px 36px;
+        min-height: 0;
+        overscroll-behavior-y: contain;
       }
 
-      .main-scroll-area::-webkit-scrollbar {
-        display: none;
-        width: 0;
-        height: 0;
+      @media (min-width: 900px) {
+        .views-scroll-area {
+          padding: 38px 40px 48px;
+        }
       }
 
-      .bottom-nav {
-        padding: 12px 20px 16px;
+      /* Mobile Bottom Navigation */
+      .mobile-bottom-nav {
+        padding: 14px 20px 24px;
         display: flex;
         justify-content: space-around;
-        font-size: 12px;
+        font-size: 13px;
         flex-shrink: 0;
         border-top: 1px solid #E1E1DB;
         background: #EDEDE9;
       }
 
-      .nav-tab {
-        cursor: pointer;
-        user-select: none;
-        padding: 6px 16px;
-        border-radius: 8px;
-        transition: color 0.15s ease;
+      @media (min-width: 900px) {
+        .mobile-bottom-nav {
+          display: none;
+        }
       }
 
-      .nav-tab.active {
+      .mobile-nav-item {
+        cursor: pointer;
+        user-select: none;
+        transition: color 180ms ease-out, transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      .mobile-nav-item.active {
         color: #23241F;
         font-weight: 700;
       }
 
-      .nav-tab.inactive {
+      .mobile-nav-item.inactive {
         color: #767668;
         font-weight: 400;
       }
@@ -180,10 +393,9 @@ export class PtApp extends LitElement {
   @state() private settings: AppSettings = { soundEnabled: true, hapticsEnabled: true };
   @state() private syncStatus: SyncStatus = 'local';
   @state() private lastSyncedAt: string | null = null;
-  @state() private syncErrorMessage: string | null = null;
   @state() private userEmail?: string;
-  @state() private isAuthenticated = false;
   @state() private now: number = Date.now();
+  @state() private syncPopoverOpen = false;
 
   // Modals
   @state() private manualLogModalOpen = false;
@@ -228,9 +440,7 @@ export class PtApp extends LitElement {
     this.settings = practiceStore.getSettings();
     this.syncStatus = practiceStore.getSyncStatus();
     this.lastSyncedAt = practiceStore.getLastSyncedAt();
-    this.syncErrorMessage = practiceStore.getSyncErrorMessage();
     this.userEmail = practiceStore.getUserEmail();
-    this.isAuthenticated = practiceStore.isAuthenticated();
   }
 
   // --- Handlers ---
@@ -251,6 +461,14 @@ export class PtApp extends LitElement {
   ) {
     const { instrumentId, start, duration, notes } = e.detail;
     practiceStore.logManualSession(instrumentId, start, duration, notes);
+  }
+
+  private handleQuickLog(e: CustomEvent<{ instrumentId: string; duration: number; daysAgo: number }>) {
+    const { instrumentId, duration, daysAgo } = e.detail;
+    const day = new Date();
+    day.setDate(day.getDate() - daysAgo);
+    day.setHours(18, 0, 0, 0);
+    practiceStore.logManualSession(instrumentId, day, duration);
   }
 
   private handleUpdateSession(e: CustomEvent<{ session: Session }>) {
@@ -304,63 +522,145 @@ export class PtApp extends LitElement {
     practiceStore.clearAllData();
   }
 
+  private async handleTriggerSync() {
+    this.syncPopoverOpen = false;
+    await practiceStore.syncWithCloud(false);
+  }
+
+
   render() {
     const today = new Date();
     const todayDateLabel = today.toLocaleDateString([], { day: 'numeric', month: 'long' });
     const todayDayName = today.toLocaleDateString([], { weekday: 'long' });
     const activeInstruments = this.instruments.filter((i) => !i.archived);
+    const avatarInitial = (this.userEmail || 'U').charAt(0).toUpperCase();
+    const syncClock = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     return html`
-      <div class="app-wrapper">
-        <div class="phone-shell">
-          <!-- Top Header -->
-          <div class="top-header">
-            <div class="header-date-info">
+      <div class="app-shell">
+        <!-- Desktop Sidebar -->
+        <aside class="desktop-sidebar">
+          <div class="sidebar-brand">Practice</div>
+          <nav class="sidebar-nav">
+            <div
+              class="sidebar-nav-item ${this.tab === 'main' ? 'active' : 'inactive'}"
+              @click=${() => {
+                this.tab = 'main';
+                this.syncPopoverOpen = false;
+              }}
+            >
+              Main
+            </div>
+            <div
+              class="sidebar-nav-item ${this.tab === 'kit' ? 'active' : 'inactive'}"
+              @click=${() => {
+                this.tab = 'kit';
+                this.syncPopoverOpen = false;
+              }}
+            >
+              Kit
+            </div>
+            <div
+              class="sidebar-nav-item ${this.tab === 'data' ? 'active' : 'inactive'}"
+              @click=${() => {
+                this.tab = 'data';
+                this.syncPopoverOpen = false;
+              }}
+            >
+              Data
+            </div>
+          </nav>
+          <div class="sidebar-footer">
+            <div
+              class="sidebar-sync-status"
+              @click=${() => (this.syncPopoverOpen = !this.syncPopoverOpen)}
+            >
+              <span
+                class="status-dot ${this.syncStatus === 'syncing' ? 'syncing' : this.syncStatus === 'error' ? 'error' : ''}"
+              ></span>
+              ${this.syncStatus === 'synced' ? 'Synced · just now' : this.syncStatus === 'syncing' ? 'Syncing...' : 'Local storage'}
+            </div>
+            <div
+              class="sidebar-user-row"
+              @click=${() => (this.settingsModalOpen = true)}
+            >
+              <span class="avatar-badge">${avatarInitial}</span>
+              <span style="font-size: 13px; color: #767668;">Settings</span>
+            </div>
+          </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="content-pane">
+          <!-- Mobile Header -->
+          <header class="mobile-header">
+            <div class="mobile-date">
               <span>${todayDateLabel}</span>
               <span>${todayDayName}</span>
             </div>
-            <div class="header-actions">
-              <pt-sync-pill
-                .syncStatus=${this.syncStatus}
-                .lastSyncedAt=${this.lastSyncedAt}
-                .errorMessage=${this.syncErrorMessage}
-                @open-settings=${() => (this.settingsModalOpen = true)}
-              ></pt-sync-pill>
-
-              ${this.isAuthenticated
-                ? html`
-                    <button
-                      class="user-avatar-btn"
-                      title="${this.userEmail || 'Account'}"
-                      @click=${() => (this.settingsModalOpen = true)}
-                    >
-                      ${(this.userEmail?.[0] || 'U').toUpperCase()}
-                    </button>
-                  `
-                : html`
-                    <button
-                      class="auth-header-btn"
-                      @click=${() => (this.authModalOpen = true)}
-                    >
-                      Sign In
-                    </button>
-                  `}
-
+            <div class="mobile-header-actions">
               <button
-                class="settings-icon-btn"
+                data-tap
+                class="sync-tag-btn"
+                @click=${() => (this.syncPopoverOpen = !this.syncPopoverOpen)}
+              >
+                <span
+                  class="status-dot ${this.syncStatus === 'syncing' ? 'syncing' : this.syncStatus === 'error' ? 'error' : ''}"
+                ></span>
+                ${this.syncStatus === 'synced' ? 'Synced' : this.syncStatus === 'syncing' ? 'Syncing' : 'Local'}
+              </button>
+              <span
+                class="avatar-badge"
+                style="cursor: pointer;"
+                @click=${() => (this.settingsModalOpen = true)}
+              >
+                ${avatarInitial}
+              </span>
+              <button
+                class="settings-gear-btn"
                 title="Settings & Backups"
                 @click=${() => (this.settingsModalOpen = true)}
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <circle cx="12" cy="12" r="3"></circle>
-                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-                </svg>
+                &#9881;
               </button>
             </div>
-          </div>
 
-          <!-- Main Scrollable Content -->
-          <div class="main-scroll-area">
+            <!-- Sync Popover -->
+            ${this.syncPopoverOpen
+              ? html`
+                  <div class="sync-popover">
+                    <div class="sync-popover-header">
+                      <span class="status-dot"></span>
+                      ${this.syncStatus === 'synced' ? 'Synced' : 'Local Database'}
+                    </div>
+                    <div class="sync-popover-details">
+                      Last cloud update: <strong style="color: #23241F;">${this.lastSyncedAt ? 'Just now' : 'Local only'}</strong>
+                    </div>
+                    <div class="sync-popover-clock">${syncClock}</div>
+                    <div class="sync-popover-actions">
+                      <button
+                        class="btn-sync-now"
+                        @click=${this.handleTriggerSync}
+                      >
+                        Sync now
+                      </button>
+                      <button
+                        class="btn-popover-gear"
+                        @click=${() => {
+                          this.syncPopoverOpen = false;
+                          this.settingsModalOpen = true;
+                        }}
+                      >
+                        &#9881;
+                      </button>
+                    </div>
+                  </div>
+                `
+              : ''}
+          </header>
+
+          <!-- Scrollable Views Area -->
+          <div class="views-scroll-area">
             ${this.tab === 'main'
               ? html`
                   <pt-main-view
@@ -371,10 +671,11 @@ export class PtApp extends LitElement {
                     @start-session=${this.handleStartSession}
                     @end-session=${this.handleEndSession}
                     @discard-session=${this.handleDiscardSession}
+                    @quick-log-session=${this.handleQuickLog}
                     @open-manual-log=${() => (this.manualLogModalOpen = true)}
                   ></pt-main-view>
                 `
-              : html``}
+              : ''}
             ${this.tab === 'kit'
               ? html`
                   <pt-kit-view
@@ -388,7 +689,7 @@ export class PtApp extends LitElement {
                     }}
                   ></pt-kit-view>
                 `
-              : html``}
+              : ''}
             ${this.tab === 'data'
               ? html`
                   <pt-data-view
@@ -400,31 +701,34 @@ export class PtApp extends LitElement {
                     }}
                   ></pt-data-view>
                 `
-              : html``}
+              : ''}
           </div>
 
-          <!-- Bottom Navigation Bar -->
-          <div class="bottom-nav">
+          <!-- Mobile Bottom Navigation -->
+          <nav class="mobile-bottom-nav">
             <span
-              class="nav-tab ${this.tab === 'main' ? 'active' : 'inactive'}"
+              data-tap
+              class="mobile-nav-item ${this.tab === 'main' ? 'active' : 'inactive'}"
               @click=${() => (this.tab = 'main')}
             >
               Main
             </span>
             <span
-              class="nav-tab ${this.tab === 'kit' ? 'active' : 'inactive'}"
+              data-tap
+              class="mobile-nav-item ${this.tab === 'kit' ? 'active' : 'inactive'}"
               @click=${() => (this.tab = 'kit')}
             >
               Kit
             </span>
             <span
-              class="nav-tab ${this.tab === 'data' ? 'active' : 'inactive'}"
+              data-tap
+              class="mobile-nav-item ${this.tab === 'data' ? 'active' : 'inactive'}"
               @click=${() => (this.tab = 'data')}
             >
               Data
             </span>
-          </div>
-        </div>
+          </nav>
+        </main>
       </div>
 
       <!-- Modals -->
@@ -482,3 +786,4 @@ export class PtApp extends LitElement {
     `;
   }
 }
+
