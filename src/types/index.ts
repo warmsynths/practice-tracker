@@ -70,7 +70,34 @@ export interface AuthState {
 }
 
 export type TabType = 'main' | 'kit' | 'data';
-export type DataPeriodType = 'day' | 'week' | 'month';
+export type DataPeriodType = 'week' | 'month' | 'year' | 'all';
+
+export interface DataBucketSegment {
+  color: string;
+  heightPct: number;
+  duration: number;
+  instrumentId: string;
+}
+
+export interface DataBucket {
+  t0: Date;
+  t1: Date;
+  label: string;
+  strong: boolean;
+  segments: DataBucketSegment[];
+}
+
+export interface InstrumentBreakdownRow {
+  id: string;
+  name: string;
+  color: string;
+  duration: number;
+  durationLabel: string;
+  sharePct: number;
+  shareLabel: string;
+  sparkline: string;
+  isSelected: boolean;
+}
 
 export interface DonutSegment {
   color: string;
