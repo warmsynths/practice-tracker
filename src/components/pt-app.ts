@@ -3,6 +3,7 @@ import { customElement, state } from 'lit/decorators.js';
 import { TabType, Instrument, Session, ActiveSession, AppSettings, SyncStatus } from '../types';
 import { practiceStore } from '../store/practice-store';
 import { syncCoordinator } from '../services/sync-coordinator';
+import { getBackgroundUrl } from '../services/background-service';
 import { commonStyles } from '../styles/shared-styles';
 
 import './views/pt-main-view';
@@ -44,6 +45,43 @@ export class PtApp extends LitElement {
         overflow: hidden;
       }
 
+      .ambient-bg {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        background-size: cover;
+        background-position: center bottom;
+        background-repeat: no-repeat;
+        filter: saturate(0.3) brightness(1.1);
+        -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 55%);
+        mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 55%);
+        opacity: 0;
+        transition: opacity 600ms ease-out;
+      }
+
+      .ambient-bg.visible {
+        opacity: 1;
+      }
+
+      .ambient-bg-noise {
+        position: absolute;
+        inset: 0;
+        z-index: 0;
+        pointer-events: none;
+        opacity: 0.17;
+        filter: url(#ambient-noise);
+        background: transparent;
+        -webkit-mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 55%);
+        mask-image: linear-gradient(to top, rgba(0,0,0,1) 0%, rgba(0,0,0,0.6) 30%, rgba(0,0,0,0) 55%);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .ambient-bg {
+          transition: none;
+        }
+      }
+
       @media (min-width: 900px) {
         :host {
           height: 100vh;
@@ -59,6 +97,8 @@ export class PtApp extends LitElement {
       /* Desktop Sidebar */
       .desktop-sidebar {
         display: none;
+        position: relative;
+        z-index: 1;
       }
 
       @media (min-width: 900px) {
@@ -177,6 +217,8 @@ export class PtApp extends LitElement {
         height: 100%;
         min-height: 0;
         overflow: hidden;
+        position: relative;
+        z-index: 1;
       }
 
       @media (min-width: 900px) {
@@ -396,6 +438,8 @@ export class PtApp extends LitElement {
   @state() private userEmail?: string;
   @state() private now: number = Date.now();
   @state() private syncPopoverOpen = false;
+  @state() private backgroundUrl: string | null = null;
+  @state() private backgroundVisible = false;
 
   // Modals
   @state() private manualLogModalOpen = false;
@@ -418,6 +462,18 @@ export class PtApp extends LitElement {
     });
 
     syncCoordinator.start();
+
+    getBackgroundUrl().then((url) => {
+      this.backgroundUrl = url;
+      if (url) {
+        // Trigger fade-in after the element renders (next frame)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            this.backgroundVisible = true;
+          });
+        });
+      }
+    });
 
     this.timerInterval = window.setInterval(() => {
       if (this.activeSession) {
@@ -538,6 +594,17 @@ export class PtApp extends LitElement {
 
     return html`
       <div class="app-shell">
+        ${this.backgroundUrl
+          ? html`
+            <svg width="0" height="0" style="position:absolute">
+              <filter id="ambient-noise">
+                <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" stitchTiles="stitch" />
+              </filter>
+            </svg>
+            <div class="ambient-bg ${this.backgroundVisible ? 'visible' : ''}" style="background-image: url('${this.backgroundUrl}')"></div>
+            <div class="ambient-bg-noise"></div>
+          `
+          : ''}
         <!-- Desktop Sidebar -->
         <aside class="desktop-sidebar">
           <div class="sidebar-brand">Practice</div>

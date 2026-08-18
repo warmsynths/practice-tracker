@@ -70,6 +70,64 @@ export default {
       });
     }
 
+    // Route: GET /api/background (public, no auth required)
+    if (pathname === '/api/background' && request.method === 'GET') {
+      if (!env.UNSPLASH_ACCESS_KEY) {
+        return new Response(JSON.stringify({ error: 'Unsplash API key not configured' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+        });
+      }
+
+      try {
+        const unsplashRes = await fetch(
+          'https://api.unsplash.com/photos/random?orientation=landscape&query=nature,landscape,calm',
+          {
+            headers: {
+              Authorization: `Client-ID ${env.UNSPLASH_ACCESS_KEY}`,
+            },
+          }
+        );
+
+        if (!unsplashRes.ok) {
+          return new Response(
+            JSON.stringify({ error: `Unsplash API error (${unsplashRes.status})` }),
+            {
+              status: 503,
+              headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+            }
+          );
+        }
+
+        const data = (await unsplashRes.json()) as { urls?: { full?: string; regular?: string } };
+        const url = data.urls?.regular || data.urls?.full;
+
+        if (!url) {
+          return new Response(JSON.stringify({ error: 'No image URL in Unsplash response' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+          });
+        }
+
+        return new Response(JSON.stringify({ url }), {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'public, max-age=86400',
+            ...CORS_HEADERS,
+          },
+        });
+      } catch {
+        return new Response(
+          JSON.stringify({ error: 'Failed to reach Unsplash API' }),
+          {
+            status: 503,
+            headers: { 'Content-Type': 'application/json', ...CORS_HEADERS },
+          }
+        );
+      }
+    }
+
     // All synchronization endpoints require valid authenticated user session
     if (!isAuthenticated || !userId || !userToken) {
       return errorResponse('Unauthorized: Valid Supabase Authorization token required for sync', 401);

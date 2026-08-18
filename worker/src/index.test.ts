@@ -148,3 +148,88 @@ describe('Cloudflare Worker BFF API Endpoints with Supabase Auth', () => {
     expect(body.instruments[0].name).toBe('Guitar');
   });
 });
+
+describe('GET /api/background', () => {
+  const envWithUnsplash: Env = {
+    UNSPLASH_ACCESS_KEY: 'test-unsplash-key',
+  };
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('returns 200 with image URL on Unsplash success', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          urls: { regular: 'https://images.unsplash.com/photo-abc?w=1080', full: 'https://images.unsplash.com/photo-abc' },
+        }),
+        { status: 200 }
+      )
+    );
+
+    const req = new Request('https://worker.dev/api/background', { method: 'GET' });
+    const res = await worker.fetch(req, envWithUnsplash);
+
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as { url: string };
+    expect(body.url).toBe('https://images.unsplash.com/photo-abc?w=1080');
+    expect(res.headers.get('Cache-Control')).toBe('public, max-age=86400');
+  });
+
+  it('returns CORS headers on the response', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ urls: { regular: 'https://example.com/photo.jpg' } }), { status: 200 })
+    );
+
+    const req = new Request('https://worker.dev/api/background', { method: 'GET' });
+    const res = await worker.fetch(req, envWithUnsplash);
+
+    expect(res.headers.get('Access-Control-Allow-Origin')).toBe('*');
+  });
+
+  it('does not require authentication', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ urls: { regular: 'https://example.com/photo.jpg' } }), { status: 200 })
+    );
+
+    const req = new Request('https://worker.dev/api/background', { method: 'GET' });
+    // No auth headers at all
+    const res = await worker.fetch(req, envWithUnsplash);
+
+    expect(res.status).toBe(200);
+  });
+
+  it('returns 503 when Unsplash API returns an error', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue(
+      new Response('Rate limit exceeded', { status: 403 })
+    );
+
+    const req = new Request('https://worker.dev/api/background', { method: 'GET' });
+    const res = await worker.fetch(req, envWithUnsplash);
+
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain('Unsplash API error');
+  });
+
+  it('returns 503 when Unsplash API is unreachable', async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new Error('Network error'));
+
+    const req = new Request('https://worker.dev/api/background', { method: 'GET' });
+    const res = await worker.fetch(req, envWithUnsplash);
+
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain('Failed to reach Unsplash API');
+  });
+
+  it('returns 503 when UNSPLASH_ACCESS_KEY is not configured', async () => {
+    const req = new Request('https://worker.dev/api/background', { method: 'GET' });
+    const res = await worker.fetch(req, {}); // No env vars at all
+
+    expect(res.status).toBe(503);
+    const body = (await res.json()) as { error: string };
+    expect(body.error).toContain('not configured');
+  });
+});

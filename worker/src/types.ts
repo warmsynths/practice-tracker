@@ -5,6 +5,7 @@ export interface Env {
   SUPABASE_SECRET_KEY?: string;
   PT_PASSCODE?: string;
   ENVIRONMENT?: string;
+  UNSPLASH_ACCESS_KEY?: string;
 }
 
 export type InstrumentTier = 'primary' | 'secondary';
