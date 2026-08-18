@@ -30,6 +30,7 @@ export class PtApp extends LitElement {
         background: #EDEDE9;
         font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
         color: #23241F;
+        position: relative;
       }
 
       .app-shell {
@@ -40,8 +41,9 @@ export class PtApp extends LitElement {
         margin: 0 auto;
         display: flex;
         flex-direction: column;
-        background: #EDEDE9;
+        background: transparent;
         position: relative;
+        z-index: 1;
         overflow: hidden;
       }
 
@@ -395,13 +397,16 @@ export class PtApp extends LitElement {
 
       /* Mobile Bottom Navigation */
       .mobile-bottom-nav {
-        padding: 14px 20px 24px;
+        padding: 12px 20px calc(14px + env(safe-area-inset-bottom, 0px));
         display: flex;
         justify-content: space-around;
+        align-items: center;
         font-size: 13px;
         flex-shrink: 0;
         border-top: 1px solid #E1E1DB;
-        background: #EDEDE9;
+        background: transparent;
+        position: relative;
+        z-index: 2;
       }
 
       @media (min-width: 900px) {
@@ -413,6 +418,8 @@ export class PtApp extends LitElement {
       .mobile-nav-item {
         cursor: pointer;
         user-select: none;
+        padding: 6px 12px;
+        border-radius: 8px;
         transition: color 180ms ease-out, transform 160ms cubic-bezier(0.2, 0.8, 0.2, 1);
       }
 
@@ -593,18 +600,18 @@ export class PtApp extends LitElement {
     const syncClock = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
     return html`
+      ${this.backgroundUrl
+        ? html`
+          <svg width="0" height="0" style="position:absolute">
+            <filter id="ambient-noise">
+              <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" stitchTiles="stitch" />
+            </filter>
+          </svg>
+          <div class="ambient-bg ${this.backgroundVisible ? 'visible' : ''}" style="background-image: url('${this.backgroundUrl}')"></div>
+          <div class="ambient-bg-noise"></div>
+        `
+        : ''}
       <div class="app-shell">
-        ${this.backgroundUrl
-          ? html`
-            <svg width="0" height="0" style="position:absolute">
-              <filter id="ambient-noise">
-                <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="4" stitchTiles="stitch" />
-              </filter>
-            </svg>
-            <div class="ambient-bg ${this.backgroundVisible ? 'visible' : ''}" style="background-image: url('${this.backgroundUrl}')"></div>
-            <div class="ambient-bg-noise"></div>
-          `
-          : ''}
         <!-- Desktop Sidebar -->
         <aside class="desktop-sidebar">
           <div class="sidebar-brand">Practice</div>
