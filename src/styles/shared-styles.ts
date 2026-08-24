@@ -25,14 +25,6 @@ export const commonStyles = css`
     margin: 0;
     padding: 0;
     -webkit-tap-highlight-color: transparent;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-  }
-
-  ::-webkit-scrollbar {
-    display: none;
-    width: 0px;
-    height: 0px;
   }
 
   button, input, select, textarea {
@@ -88,6 +80,21 @@ export const commonStyles = css`
   @keyframes softPulse {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.42; }
+  }
+
+  @keyframes breathe {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  @keyframes halo {
+    0% { transform: scale(0.6); opacity: 0.45; }
+    70%, 100% { transform: scale(2.1); opacity: 0; }
+  }
+
+  @keyframes tinyWobble {
+    0%, 100% { transform: rotate(-2.5deg); }
+    50% { transform: rotate(2.5deg); }
   }
 
   @keyframes drift {

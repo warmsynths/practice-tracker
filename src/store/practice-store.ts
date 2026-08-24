@@ -351,7 +351,7 @@ class PracticeStore {
     this.notify();
   }
 
-  public endSession(): Session | null {
+  public endSession(notes?: string): Session | null {
     if (!this.activeSession) return null;
     const now = Date.now();
     const elapsedMinutes = Math.max(1, Math.round((now - this.activeSession.startedAt) / 60000));
@@ -363,6 +363,7 @@ class PracticeStore {
       start: new Date(this.activeSession.startedAt).toISOString(),
       end: nowIso,
       duration: elapsedMinutes,
+      notes: notes && notes.trim() ? notes.trim() : undefined,
       updatedAt: nowIso,
     };
 
@@ -510,6 +511,60 @@ class PracticeStore {
     playClickSound(this.settings.soundEnabled);
     this.notify();
 
+    this.triggerBackgroundSync();
+  }
+
+  public retireInstrument(id: string): void {
+    const activeList = this.getActiveInstruments();
+    if (activeList.length <= 1) return; // Keep at least 1
+    const nowIso = new Date().toISOString();
+    this.instruments = this.instruments.map((i) =>
+      i.id === id ? { ...i, archived: true, updatedAt: nowIso } : i
+    );
+    this.persistInstruments();
+    playClickSound(this.settings.soundEnabled);
+    this.notify();
+    this.triggerBackgroundSync();
+  }
+
+  public restoreInstrument(id: string): void {
+    const nowIso = new Date().toISOString();
+    this.instruments = this.instruments.map((i) =>
+      i.id === id ? { ...i, archived: false, updatedAt: nowIso } : i
+    );
+    this.persistInstruments();
+    playClickSound(this.settings.soundEnabled);
+    this.notify();
+    this.triggerBackgroundSync();
+  }
+
+  public renameInstrument(id: string, name: string): void {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const nowIso = new Date().toISOString();
+    this.instruments = this.instruments.map((i) =>
+      i.id === id ? { ...i, name: trimmed, updatedAt: nowIso } : i
+    );
+    this.persistInstruments();
+    this.notify();
+    this.triggerBackgroundSync();
+  }
+
+  public updateSessionDurationAndNote(sessionId: string, durationMinutes: number, notes?: string): void {
+    const nowIso = new Date().toISOString();
+    this.sessions = this.sessions.map((s) =>
+      s.id === sessionId
+        ? {
+            ...s,
+            duration: Math.max(1, durationMinutes),
+            notes: notes !== undefined ? (notes.trim() ? notes.trim() : undefined) : s.notes,
+            updatedAt: nowIso,
+          }
+        : s
+    );
+    this.persistSessions();
+    playClickSound(this.settings.soundEnabled);
+    this.notify();
     this.triggerBackgroundSync();
   }
 

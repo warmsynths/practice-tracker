@@ -177,6 +177,45 @@ export class AuthService {
     }
   }
 
+  public async signInWithOAuth(provider: 'google' = 'google'): Promise<{ success: boolean; message?: string }> {
+    if (!this.client) {
+      return { success: false, message: 'Supabase credentials are not configured.' };
+    }
+    try {
+      const { error } = await this.client.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: window.location.origin,
+        },
+      });
+      if (error) {
+        return { success: false, message: error.message };
+      }
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, message: msg };
+    }
+  }
+
+  public async resetPasswordForEmail(email: string): Promise<{ success: boolean; message?: string }> {
+    if (!this.client) {
+      return { success: false, message: 'Supabase credentials are not configured.' };
+    }
+    try {
+      const { error } = await this.client.auth.resetPasswordForEmail(email.trim(), {
+        redirectTo: window.location.origin,
+      });
+      if (error) {
+        return { success: false, message: error.message };
+      }
+      return { success: true, message: 'Password reset link sent to your email.' };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, message: msg };
+    }
+  }
+
   public async signOut(): Promise<{ success: boolean; message?: string }> {
     if (!this.client) {
       this.currentUser = null;

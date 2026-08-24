@@ -37,6 +37,8 @@ export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'error' | 'local';
 export interface AppSettings {
   soundEnabled: boolean;
   hapticsEnabled: boolean;
+  weekStartsOnSunday?: boolean;
+  weeklyGoalMinutes?: number;
   workerUrl?: string;
   syncPasscode?: string;
   lastSyncedAt?: string;
@@ -69,7 +71,7 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-export type TabType = 'main' | 'kit' | 'data';
+export type TabType = 'practice' | 'log' | 'kit' | 'settings' | 'main' | 'data';
 export type DataPeriodType = 'week' | 'month' | 'year' | 'all';
 
 export interface DataBucketSegment {
@@ -153,4 +155,90 @@ export interface InstrumentRepetitionState {
   cycleCount: number; // number of completed 30d loops
   label: string; // e.g. "Step 2/5 (3d)"
 }
+
+export type RangeScope = 'week' | 'month' | 'quarter' | 'year';
+
+export interface MilestoneItem {
+  id: string;
+  done: boolean;
+  accent: string;
+  icon: string;
+  kind: string;
+  title: string;
+  detail: string;
+  when: number;
+  dateLabel: string;
+  isNew: boolean;
+  pct?: number;
+  pctLabel?: string;
+  iconBg?: string;
+  iconStroke?: string;
+  labelColor?: string;
+  edge?: string;
+  tail?: string;
+}
+
+export interface HeatmapCell {
+  bg: string;
+  op: string;
+  ring: string;
+  anim: string;
+  mark: boolean;
+  icon: string;
+  markStroke: string;
+  cursor: string;
+  date: Date;
+  milestoneId?: string;
+}
+
+export interface OneAwayItem {
+  big: string;
+  text: string;
+  instId: string;
+  instName: string;
+  instColor: string;
+  mins: number;
+}
+
+export interface DriftMetric {
+  id: string;
+  name: string;
+  color: string;
+  days: number;
+  num: string;
+  unit: string;
+  ago: string;
+  ticks: { h: string; bg: string }[];
+}
+
+export interface RecordsItem {
+  k: string;
+  v: string;
+  sub: string;
+  fresh: boolean;
+}
+
+export interface WeekdayFingerprintItem {
+  label: string;
+  val: string;
+  h: number;
+  bg: string;
+  strong: number;
+}
+
+export interface SessionLengthBucket {
+  label: string;
+  n: number;
+  h: number;
+  bg: string;
+}
+
+export interface NoteThemeItem {
+  name: string;
+  mins: string;
+  color: string;
+  ago: string;
+  size: string;
+}
+
 
