@@ -213,6 +213,48 @@ export class PtKitView extends LitElement {
         transform: scale(1.15);
       }
 
+      .rank-controls {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .rank-badge {
+        font-size: 11px;
+        font-weight: 800;
+        background: #E8E7E0;
+        color: #4A4945;
+        padding: 4px 8px;
+        border-radius: 8px;
+        letter-spacing: 0.02em;
+        white-space: nowrap;
+      }
+
+      .btn-rank-move {
+        background: #EDECE6;
+        border: 1px solid #DDDCD4;
+        border-radius: 6px;
+        width: 26px;
+        height: 26px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        color: #4A4945;
+        cursor: pointer;
+        transition: background-color 140ms ease;
+      }
+
+      .btn-rank-move:hover:not(:disabled) {
+        background: #DEDDD6;
+        color: #23241F;
+      }
+
+      .btn-rank-move:disabled {
+        opacity: 0.35;
+        cursor: default;
+      }
+
       .btn-add-inst {
         background: #4F6353;
         color: #F7F6F1;
@@ -353,13 +395,60 @@ export class PtKitView extends LitElement {
     );
   }
 
+  private handleMoveRank(instId: string, direction: 'up' | 'down') {
+    const active = this.instruments
+      .filter((i) => !i.archived && !i.deletedAt)
+      .slice()
+      .sort((a, b) => {
+        const rA = a.rank ?? 99;
+        const rB = b.rank ?? 99;
+        if (rA !== rB) return rA - rB;
+        if (a.tier !== b.tier) return a.tier === 'primary' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+
+    const idx = active.findIndex((i) => i.id === instId);
+    if (idx === -1) return;
+    const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= active.length) return;
+
+    const currentInst = active[idx];
+    const otherInst = active[targetIdx];
+
+    this.dispatchEvent(
+      new CustomEvent('update-instrument', {
+        detail: { instrument: { ...currentInst, rank: targetIdx + 1 } },
+        bubbles: true,
+        composed: true,
+      })
+    );
+
+    this.dispatchEvent(
+      new CustomEvent('update-instrument', {
+        detail: { instrument: { ...otherInst, rank: idx + 1 } },
+        bubbles: true,
+        composed: true,
+      })
+    );
+  }
+
   render() {
     const today = dayStart(new Date());
     const dAgo = (t: Date) => Math.round((today.getTime() - dayStart(t).getTime()) / 86400000);
     const agoText = (d: number) =>
       d === 0 ? 'today' : d === 1 ? 'yesterday' : d >= 99 ? 'never played' : `${d}d ago`;
 
-    const activeKit = this.instruments.filter((i) => !i.archived);
+    const activeKit = this.instruments
+      .filter((i) => !i.archived && !i.deletedAt)
+      .slice()
+      .sort((a, b) => {
+        const rA = a.rank ?? 99;
+        const rB = b.rank ?? 99;
+        if (rA !== rB) return rA - rB;
+        if (a.tier !== b.tier) return a.tier === 'primary' ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      });
+
     const retiredKit = this.instruments.filter((i) => i.archived);
 
     const getStat = (id: string) => {
@@ -380,15 +469,34 @@ export class PtKitView extends LitElement {
         <!-- Active Kit Card -->
         <div class="kit-card">
           <div class="kit-header-row">
-            <span class="kit-tag">Active Kit</span>
-            <span class="kit-sub-tag">${activeKit.length} active · click a name to rename</span>
+            <span class="kit-tag">Active Kit & Scientific Priority Ranks</span>
+            <span class="kit-sub-tag">${activeKit.length} active · use ▲ ▼ to set priority importance</span>
           </div>
 
           <div class="kit-rows-list">
-            ${activeKit.map((k) => {
+            ${activeKit.map((k, idx) => {
               const stat = getStat(k.id);
               return html`
                 <div class="kit-inst-row">
+                  <div class="rank-controls">
+                    <button
+                      class="btn-rank-move"
+                      ?disabled=${idx === 0}
+                      @click=${() => this.handleMoveRank(k.id, 'up')}
+                      title="Move priority up"
+                    >
+                      ▲
+                    </button>
+                    <span class="rank-badge">#${idx + 1} Priority</span>
+                    <button
+                      class="btn-rank-move"
+                      ?disabled=${idx === activeKit.length - 1}
+                      @click=${() => this.handleMoveRank(k.id, 'down')}
+                      title="Move priority down"
+                    >
+                      ▼
+                    </button>
+                  </div>
                   <span class="inst-dot" style="background: ${k.color};"></span>
                   <input
                     type="text"

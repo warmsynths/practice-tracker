@@ -5,6 +5,7 @@ export interface Instrument {
   name: string;
   color: string;
   tier: InstrumentTier;
+  rank?: number; // Priority rank (1 = Highest importance, 2 = 2nd, etc.)
   archived?: boolean;
   updatedAt?: string;
   deletedAt?: string;
@@ -239,6 +240,29 @@ export interface NoteThemeItem {
   color: string;
   ago: string;
   size: string;
+}
+
+export interface InstrumentScoreBreakdown {
+  instrumentId: string;
+  name: string;
+  color: string;
+  tier: InstrumentTier;
+  rank: number;
+  score: number; // 0..100 composite urgency score
+  retentionPct: number; // 0..100% memory retention
+  targetSharePct: number; // target allocation % (e.g. 35%)
+  actualSharePct: number; // actual rolling share % (e.g. 15%)
+  shareDeficitPct: number; // target - actual (e.g. +20%)
+  daysSince: number; // days elapsed since last session
+  step: number; // spaced repetition step (0..5)
+  status: InstrumentHeatStatus;
+  reason: string; // scientific rationale explanation
+  isPracticedToday: boolean;
+}
+
+export interface PracticeRecommendation {
+  topPick: InstrumentScoreBreakdown | null;
+  rankedQueue: InstrumentScoreBreakdown[];
 }
 
 

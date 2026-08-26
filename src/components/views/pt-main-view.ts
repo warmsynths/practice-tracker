@@ -21,6 +21,7 @@ export class PtMainView extends LitElement {
   @state() private quickLogOpen: boolean = false;
   @state() private recentEndedSession: { id: string; name: string; mins: number; notes: string } | null = null;
   @state() private toastTimeout: any = null;
+  @state() private showFullQueue: boolean = false;
 
   static styles = [
     commonStyles,
@@ -468,6 +469,66 @@ export class PtMainView extends LitElement {
       .card-sub-label {
         font-size: 11px;
         color: #A3A297;
+      }
+
+      .queue-toggle-btn {
+        background: transparent;
+        border: none;
+        color: #4F6353;
+        font-size: 11.5px;
+        font-weight: 700;
+        cursor: pointer;
+        padding: 6px 0 0;
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        outline: none;
+      }
+
+      .queue-toggle-btn:hover {
+        color: #23241F;
+      }
+
+      .queue-list-table {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        margin-top: 10px;
+        padding-top: 10px;
+        border-top: 1px dashed #E0DFD7;
+      }
+
+      .queue-item-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 6px 10px;
+        background: #FAFAF7;
+        border-radius: 10px;
+        border: 1px solid #EAE8E1;
+        font-size: 12px;
+        cursor: pointer;
+        transition: background-color 140ms ease;
+      }
+
+      .queue-item-row:hover {
+        background: #F0EFEA;
+      }
+
+      .queue-item-meta {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .queue-score-pill {
+        font-size: 10.5px;
+        font-weight: 800;
+        background: #23241F;
+        color: #FAFAF7;
+        padding: 2px 6px;
+        border-radius: 6px;
       }
 
       /* Day Streak Card */
@@ -1291,20 +1352,21 @@ export class PtMainView extends LitElement {
           ${!isRunning
             ? html`
                 <div class="start-chips-group">
-                  ${this.instruments
-                    .filter((i) => !i.archived)
-                    .map(
-                      (inst) => html`
-                        <div
-                          class="inst-chip"
-                          @click=${() => this.handleStart(inst.id)}
-                          title="Start ${inst.name} practice session"
-                        >
-                          <span class="inst-dot" style="background: ${inst.color};"></span>
-                          <span>${inst.name}</span>
-                        </div>
-                      `
-                    )}
+                  ${stats.recommendation.rankedQueue.map(
+                    (item) => html`
+                      <div
+                        class="inst-chip"
+                        @click=${() => this.handleStart(item.instrumentId)}
+                        title="${item.name} (#${item.rank} rank, ${item.score} urgency score) - ${item.reason}"
+                      >
+                        <span class="inst-dot" style="background: ${item.color};"></span>
+                        <span>${item.name}</span>
+                        <span style="font-size: 10.5px; color: #767668; margin-left: 2px;">
+                          ${item.retentionPct}%
+                        </span>
+                      </div>
+                    `
+                  )}
                 </div>
 
                 <div class="live-start-actions">
@@ -1780,10 +1842,10 @@ export class PtMainView extends LitElement {
             </div>
           </div>
 
-          <!-- 10. Play This Next (Drift Card) (Span 2) -->
+          <!-- 10. Play This Next (Scientific Card) (Span 2) -->
           <div class="drift-card card-span-2">
             <div class="drift-top-row">
-              <span class="drift-tag">PLAY THIS NEXT</span>
+              <span class="drift-tag">SCIENTIFIC PLAY NEXT</span>
               <span style="width: 8px; height: 8px; border-radius: 50%; background: ${stats.drift.color};"></span>
             </div>
 
@@ -1802,8 +1864,18 @@ export class PtMainView extends LitElement {
 
             <div style="display: flex; flex-direction: column; gap: 14px;">
               <div>
-                <div class="drift-inst-name">${stats.drift.name}</div>
-                <div class="drift-ago-sub">${stats.drift.ago}</div>
+                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <div class="drift-inst-name">${stats.drift.name}</div>
+                  ${stats.recommendation.topPick
+                    ? html`
+                        <span class="rank-badge">#${stats.recommendation.topPick.rank} Priority</span>
+                        <span class="rank-badge" style="background: #E58E38; color: #FFF;">
+                          ${stats.recommendation.topPick.retentionPct}% Retention
+                        </span>
+                      `
+                    : ''}
+                </div>
+                <div class="drift-ago-sub" style="margin-top: 4px;">${stats.pick.reason}</div>
               </div>
               <button class="btn-drift-action" @click=${() => this.handleStart(stats.drift.id)}>
                 <span>Pick it up</span>
@@ -1811,6 +1883,33 @@ export class PtMainView extends LitElement {
                   <path d="M4.5 12h14M13 6.5l5.5 5.5L13 17.5"></path>
                 </svg>
               </button>
+
+              <button class="queue-toggle-btn" @click=${() => (this.showFullQueue = !this.showFullQueue)}>
+                <span>${this.showFullQueue ? '▼ Hide Priority Queue' : '▶ View Scientific Priority Queue (' + stats.recommendation.rankedQueue.length + ')'}</span>
+              </button>
+
+              ${this.showFullQueue
+                ? html`
+                    <div class="queue-list-table">
+                      ${stats.recommendation.rankedQueue.map(
+                        (q, idx) => html`
+                          <div class="queue-item-row" @click=${() => this.handleStart(q.instrumentId)}>
+                            <div class="queue-item-meta">
+                              <span style="font-weight: 700; color: #767668;">#${idx + 1}</span>
+                              <span style="width: 8px; height: 8px; border-radius: 50%; background: ${q.color}; flex-shrink: 0;"></span>
+                              <span style="font-weight: 700;">${q.name}</span>
+                              <span style="font-size: 11px; color: #767668;">(#${q.rank} priority)</span>
+                            </div>
+                            <div class="queue-item-meta">
+                              <span style="font-size: 11px; color: #4A4945;">${q.retentionPct}% retention</span>
+                              <span class="queue-score-pill">${q.score}</span>
+                            </div>
+                          </div>
+                        `
+                      )}
+                    </div>
+                  `
+                : ''}
             </div>
           </div>
 

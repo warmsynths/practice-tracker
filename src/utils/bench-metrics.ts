@@ -10,7 +10,9 @@ import {
   WeekdayFingerprintItem,
   SessionLengthBucket,
   NoteThemeItem,
+  PracticeRecommendation,
 } from '../types';
+import { calculatePracticeRecommendations } from './recommendation-engine';
 
 export const BENCH_ICONS = {
   clock: 'M6.4 3.4h11.2M6.4 20.6h11.2M8.2 3.4v3.3c0 2.1 3.8 3.7 3.8 5.3s-3.8 3.2-3.8 5.3v3.3M15.8 3.4v3.3c0 2.1-3.8 3.7-3.8 5.3s3.8 3.2 3.8 5.3v3.3',
@@ -77,6 +79,7 @@ export interface BenchDataCalculations {
   oneAway: OneAwayItem[];
   drift: DriftMetric;
   pick: { id: string; name: string; color: string; reason: string };
+  recommendation: PracticeRecommendation;
   heatMarked: HeatmapCell[];
   heatMonths: { label: string }[];
   heatSince: string;
@@ -257,73 +260,64 @@ export function calculateBenchStats(
   const capAngle = (milePct * 360 - 90) * (Math.PI / 180);
   const capX = (59 + R * Math.cos(capAngle)).toFixed(1);
   const capY = (59 + R * Math.sin(capAngle)).toFixed(1);
-
   // Recent 6 weeks (42 days)
   const cutoff42 = addDays(today, -42);
   const recent42 = parsedSessions.filter((s) => s.t >= cutoff42);
   const totalRecent = recent42.reduce((a, s) => a + s.min, 0) || 1;
 
-  const kitRecency = activeInsts.map((i) => {
-    const mineAll = parsedSessions.filter((s) => s.instrumentId === i.id);
-    const mineRecent = recent42.filter((s) => s.instrumentId === i.id);
-    const lastSession = mineAll[mineAll.length - 1];
-    const daysSince = lastSession
-      ? Math.round((today.getTime() - dayStart(lastSession.t).getTime()) / 86400000)
-      : 99;
-    const minsRecent = mineRecent.reduce((a, s) => a + s.min, 0);
-    return {
-      ...i,
-      days: daysSince,
-      mins: minsRecent,
-      share: minsRecent / totalRecent,
-    };
-  });
-
-  const coldestList = kitRecency.slice().sort((a, b) => b.days - a.days || a.share - b.share);
-  const coldest = coldestList[0] || (activeInsts[0] ? { ...activeInsts[0], days: 99, share: 0, mins: 0 } : { id: 'guitar', name: 'Guitar', color: '#6B7F6E', tier: 'primary' as const, days: 99, share: 0, mins: 0 });
-
   const agoText = (d: number) =>
     d === 0 ? 'today' : d === 1 ? 'yesterday' : d >= 99 ? 'never' : `${d}d ago`;
 
-  const reasonFor = (k: { name: string; days: number; share: number }) =>
-    k.days >= 99
-      ? 'Never logged yet. Start a session to break the ice.'
-      : k.days >= 6
-      ? `Untouched for ${k.days} days — longest neglect in your kit.`
-      : k.share < 0.12
-      ? `Only ${Math.round(k.share * 100)}% of recent practice. It is slipping.`
-      : `Last played ${agoText(k.days)}. Ready for another pass.`;
+  const recommendation = calculatePracticeRecommendations(activeInsts, sessions, today);
+  const topPick = recommendation.topPick;
 
-  const pick = {
-    id: coldest.id,
-    name: coldest.name,
-    color: coldest.color,
-    reason: reasonFor(coldest),
-  };
+  const pick = topPick
+    ? {
+        id: topPick.instrumentId,
+        name: topPick.name,
+        color: topPick.color,
+        reason: topPick.reason,
+      }
+    : {
+        id: activeInsts[0]?.id || 'guitar',
+        name: activeInsts[0]?.name || 'Guitar',
+        color: activeInsts[0]?.color || '#6B7F6E',
+        reason: 'Start a session to build your practice streak.',
+      };
 
-  // Drift Metric for "Play This Next"
+  const pickDays = topPick ? topPick.daysSince : 99;
   const playedDates = new Set(
-    parsedSessions.filter((s) => s.instrumentId === coldest.id).map((s) => Math.round((today.getTime() - dayStart(s.t).getTime()) / 86400000))
+    parsedSessions
+      .filter((s) => s.instrumentId === pick.id)
+      .map((s) => Math.round((today.getTime() - dayStart(s.t).getTime()) / 86400000))
   );
+
   const driftTicks = Array.from({ length: 14 }, (_, i) => {
     const dAgo = 13 - i;
     const hit = playedDates.has(dAgo);
     return {
-      h: hit ? '30px' : dAgo < coldest.days ? '9px' : '16px',
-      bg: hit ? coldest.color : 'rgba(242,241,236,0.18)',
+      h: hit ? '30px' : dAgo < pickDays ? '9px' : '16px',
+      bg: hit ? pick.color : 'rgba(242,241,236,0.18)',
     };
   });
 
   const drift: DriftMetric = {
-    id: coldest.id,
-    name: coldest.name,
-    color: coldest.color,
-    days: coldest.days,
-    num: coldest.days >= 99 ? '—' : String(coldest.days),
-    unit: coldest.days >= 99 ? 'not yet logged' : coldest.days === 1 ? 'day since' : 'days since',
-    ago: coldest.days >= 99 ? 'never logged' : `last played ${agoText(coldest.days)}`,
+    id: pick.id,
+    name: pick.name,
+    color: pick.color,
+    days: pickDays >= 999 ? 99 : pickDays,
+    num: pickDays >= 999 ? '—' : String(pickDays),
+    unit: pickDays >= 999 ? 'not yet logged' : pickDays === 1 ? 'day since' : 'days since',
+    ago: pickDays >= 999 ? 'never logged' : pickDays === 0 ? 'last played today' : pickDays === 1 ? 'last played yesterday' : `last played ${pickDays}d ago`,
     ticks: driftTicks,
   };
+
+  const targetInst = activeInsts.find((i) => i.id === pick.id) || activeInsts[0] || { id: 'guitar', name: 'Guitar', color: '#6B7F6E', tier: 'primary' as const };
+  const coldest = {
+    ...targetInst,
+    days: pickDays >= 999 ? 99 : pickDays,
+  };
+  const coldestList = [coldest];
 
   // Weekly Median pace
   const thisMon = mondayOf(today);
@@ -1019,6 +1013,7 @@ export function calculateBenchStats(
     oneAway,
     drift,
     pick,
+    recommendation,
     heatMarked: heatCells,
     heatMonths,
     heatSince,
