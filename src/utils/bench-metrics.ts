@@ -11,6 +11,7 @@ import {
   SessionLengthBucket,
   NoteThemeItem,
   PracticeRecommendation,
+  RecommendationReasonDetails,
 } from '../types';
 import { calculatePracticeRecommendations } from './recommendation-engine';
 
@@ -78,7 +79,7 @@ export interface BenchDataCalculations {
   capY: string;
   oneAway: OneAwayItem[];
   drift: DriftMetric;
-  pick: { id: string; name: string; color: string; reason: string };
+  pick: { id: string; name: string; color: string; reason: string; reasonDetails?: RecommendationReasonDetails };
   recommendation: PracticeRecommendation;
   heatMarked: HeatmapCell[];
   heatMonths: { label: string }[];
@@ -277,12 +278,19 @@ export function calculateBenchStats(
         name: topPick.name,
         color: topPick.color,
         reason: topPick.reason,
+        reasonDetails: topPick.reasonDetails,
       }
     : {
         id: activeInsts[0]?.id || 'guitar',
         name: activeInsts[0]?.name || 'Guitar',
         color: activeInsts[0]?.color || '#6B7F6E',
         reason: 'Start a session to build your practice streak.',
+        reasonDetails: {
+          badge: 'FRESH CANVAS',
+          headline: 'Start a session',
+          explanation: 'Log your first sitting to establish your baseline practice streak.',
+          icon: 'sparkles',
+        },
       };
 
   const pickDays = topPick ? topPick.daysSince : 99;

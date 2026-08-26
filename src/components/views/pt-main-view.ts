@@ -21,7 +21,7 @@ export class PtMainView extends LitElement {
   @state() private quickLogOpen: boolean = false;
   @state() private recentEndedSession: { id: string; name: string; mins: number; notes: string } | null = null;
   @state() private toastTimeout: any = null;
-  @state() private showFullQueue: boolean = false;
+  @state() private showReasonWhy: boolean = false;
 
   static styles = [
     commonStyles,
@@ -763,6 +763,164 @@ export class PtMainView extends LitElement {
         margin-top: 4px;
       }
 
+      .reason-badge {
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        background: rgba(242, 241, 236, 0.16);
+        color: #F2F1EC;
+        padding: 3px 9px;
+        border-radius: 8px;
+        border: 1px solid rgba(242, 241, 236, 0.22);
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        white-space: nowrap;
+      }
+
+      .reason-headline-text {
+        font-size: 13.5px;
+        font-weight: 700;
+        color: #F2F1EC;
+        margin-top: 6px;
+      }
+
+      .reason-explanation-text {
+        font-size: 12.5px;
+        color: rgba(242, 241, 236, 0.82);
+        line-height: 1.4;
+        margin-top: 3px;
+      }
+
+      .queue-reason-tag {
+        font-size: 9.5px;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        background: #E8E7E0;
+        color: #4A4945;
+        padding: 2px 6px;
+        border-radius: 5px;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .reason-info-btn {
+        width: 18px;
+        height: 18px;
+        border-radius: 50%;
+        background: rgba(242, 241, 236, 0.18);
+        border: 1px solid rgba(242, 241, 236, 0.3);
+        color: #F2F1EC;
+        font-size: 11px;
+        font-weight: 800;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 160ms ease, color 160ms ease;
+        padding: 0;
+        line-height: 1;
+        outline: none;
+      }
+
+      .reason-info-btn:hover,
+      .reason-info-btn.active {
+        background: #F2F1EC;
+        color: #23241F;
+      }
+
+      .reason-why-drawer {
+        background: rgba(0, 0, 0, 0.25);
+        border: 1px solid rgba(242, 241, 236, 0.16);
+        border-radius: 12px;
+        padding: 12px 14px;
+        margin-top: 6px;
+        font-size: 12px;
+        color: rgba(242, 241, 236, 0.92);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        animation: riseIn 180ms ease-out both;
+      }
+
+      .why-metric-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: rgba(242, 241, 236, 0.8);
+      }
+
+      .drift-hero-grid {
+        display: grid;
+        grid-template-columns: 1.2fr 1fr;
+        gap: 24px;
+        align-items: start;
+      }
+
+      @media (max-width: 820px) {
+        .drift-hero-grid {
+          grid-template-columns: 1fr;
+          gap: 18px;
+        }
+      }
+
+      .drift-hero-left {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+
+      .drift-hero-right {
+        background: rgba(0, 0, 0, 0.22);
+        border: 1px solid rgba(242, 241, 236, 0.14);
+        border-radius: 16px;
+        padding: 16px 18px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .queue-hero-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        padding: 8px 10px;
+        background: rgba(255, 255, 255, 0.07);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: background 140ms ease, transform 140ms ease;
+      }
+
+      .queue-hero-row:hover {
+        background: rgba(255, 255, 255, 0.15);
+        transform: translateX(2px);
+      }
+
+      .hero-queue-tag {
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.05em;
+        background: rgba(242, 241, 236, 0.18);
+        color: #F2F1EC;
+        padding: 2px 5px;
+        border-radius: 4px;
+        text-transform: uppercase;
+        white-space: nowrap;
+      }
+
+      .hero-score-pill {
+        font-size: 10px;
+        font-weight: 800;
+        background: #F2F1EC;
+        color: #23241F;
+        padding: 2px 6px;
+        border-radius: 5px;
+      }
+
       .btn-drift-action {
         background: #F2F1EC;
         color: #23241F;
@@ -1314,6 +1472,22 @@ export class PtMainView extends LitElement {
     };
   }
 
+  private renderReasonIcon(icon?: string) {
+    if (!icon) return '';
+    switch (icon) {
+      case 'bolt':
+        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
+      case 'brain':
+        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path><path d="M12 5v13"></path></svg>`;
+      case 'scale':
+        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h18"></path></svg>`;
+      case 'sparkles':
+        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path></svg>`;
+      default:
+        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
+    }
+  }
+
   render() {
     const stats: BenchDataCalculations = calculateBenchStats(this.sessions, this.instruments, {
       range: this.range,
@@ -1512,7 +1686,133 @@ export class PtMainView extends LitElement {
 
         <!-- 4-Column Card Grid -->
         <div class="bench-cards-grid">
-          <!-- 1. Day Streak Card (Span 2) -->
+          <!-- 1. Play This Next Hero Bento Card (Span 4) -->
+          <div class="drift-card card-span-4">
+            <div class="drift-top-row">
+              <span class="drift-tag">SCIENTIFIC PLAY NEXT</span>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                ${stats.pick.reasonDetails
+                  ? html`
+                      <span class="reason-badge">
+                        ${this.renderReasonIcon(stats.pick.reasonDetails.icon)}
+                        ${stats.pick.reasonDetails.badge}
+                      </span>
+                    `
+                  : ''}
+                <button
+                  class="reason-info-btn ${this.showReasonWhy ? 'active' : ''}"
+                  @click=${(e: Event) => {
+                    e.stopPropagation();
+                    this.showReasonWhy = !this.showReasonWhy;
+                  }}
+                  title="Why was this recommended?"
+                >?</button>
+              </div>
+            </div>
+
+            <div class="drift-hero-grid">
+              <!-- Left Column: Spotlight Instrument & Action -->
+              <div class="drift-hero-left">
+                <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;">
+                  <div>
+                    <div class="drift-num-row">
+                      <div class="drift-big-num">${stats.drift.num}</div>
+                      <div class="drift-unit-label">${stats.drift.unit}</div>
+                    </div>
+                  </div>
+                  <div style="width: 140px;">
+                    <div class="drift-ticks-row">
+                      ${stats.drift.ticks.map(
+                        (t) => html`
+                          <span class="drift-tick" style="height: ${t.h}; background: ${t.bg};"></span>
+                        `
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                    <div class="drift-inst-name">${stats.drift.name}</div>
+                    ${stats.recommendation.topPick
+                      ? html`
+                          <span class="rank-badge" style="background: rgba(255, 255, 255, 0.14); color: #F2F1EC;">
+                            #${stats.recommendation.topPick.rank} Priority
+                          </span>
+                        `
+                      : ''}
+                  </div>
+                  <div class="reason-headline-text">
+                    ${stats.pick.reasonDetails ? stats.pick.reasonDetails.headline : stats.pick.reason}
+                  </div>
+                </div>
+
+                ${this.showReasonWhy
+                  ? html`
+                      <div class="reason-why-drawer">
+                        <div style="font-weight: 700; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #F2F1EC; display: flex; justify-content: space-between;">
+                          <span>Algorithm Rationale</span>
+                          <span>Urgency Score: ${stats.recommendation.topPick?.score || 0}/100</span>
+                        </div>
+                        <div style="line-height: 1.4; color: rgba(242, 241, 236, 0.95);">
+                          ${stats.pick.reasonDetails?.explanation || stats.pick.reason}
+                        </div>
+                        <div style="border-top: 1px dashed rgba(242, 241, 236, 0.2); padding-top: 6px; margin-top: 2px;" class="why-metric-row">
+                          <span>Memory Retention: <strong>${stats.recommendation.topPick?.retentionPct || 0}%</strong></span>
+                          <span>Target Share: <strong>${stats.recommendation.topPick?.targetSharePct || 0}%</strong> (actual: ${stats.recommendation.topPick?.actualSharePct || 0}%)</span>
+                        </div>
+                      </div>
+                    `
+                  : ''}
+
+                <button class="btn-drift-action" @click=${() => this.handleStart(stats.drift.id)}>
+                  <span>Pick up ${stats.drift.name}</span>
+                  <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#23241F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4.5 12h14M13 6.5l5.5 5.5L13 17.5"></path>
+                  </svg>
+                </button>
+              </div>
+
+              <!-- Right Column: Priority Queue Spotlight -->
+              <div class="drift-hero-right">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <span style="font-size: 9.5px; font-weight: 800; letter-spacing: 0.1em; opacity: 0.75; text-transform: uppercase;">
+                    Scientific Priority Queue
+                  </span>
+                  <span style="font-size: 11px; opacity: 0.65; font-weight: 700;">
+                    ${stats.recommendation.rankedQueue.length} Active
+                  </span>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                  ${stats.recommendation.rankedQueue.slice(0, 4).map(
+                    (q, idx) => html`
+                      <div
+                        class="queue-hero-row"
+                        @click=${() => this.handleStart(q.instrumentId)}
+                        title="${q.reasonDetails ? q.reasonDetails.explanation : q.reason}"
+                      >
+                        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
+                          <span style="font-weight: 800; font-size: 11px; opacity: 0.6; min-width: 16px;">#${idx + 1}</span>
+                          <span style="width: 7px; height: 7px; border-radius: 50%; background: ${q.color}; flex-shrink: 0;"></span>
+                          <span style="font-weight: 700; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #F2F1EC;">${q.name}</span>
+                          ${q.reasonDetails
+                            ? html`<span class="hero-queue-tag">${q.reasonDetails.badge}</span>`
+                            : ''}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                          <span style="font-size: 11px; opacity: 0.7;">${q.retentionPct}%</span>
+                          <span class="hero-score-pill">${q.score}</span>
+                        </div>
+                      </div>
+                    `
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Day Streak Card (Span 2) -->
           <div class="bench-card card-span-2">
             <div class="bench-card-header">
               <span class="card-label">Day Streak</span>
@@ -1842,76 +2142,7 @@ export class PtMainView extends LitElement {
             </div>
           </div>
 
-          <!-- 10. Play This Next (Scientific Card) (Span 2) -->
-          <div class="drift-card card-span-2">
-            <div class="drift-top-row">
-              <span class="drift-tag">SCIENTIFIC PLAY NEXT</span>
-              <span style="width: 8px; height: 8px; border-radius: 50%; background: ${stats.drift.color};"></span>
-            </div>
 
-            <div class="drift-num-row">
-              <div class="drift-big-num">${stats.drift.num}</div>
-              <div class="drift-unit-label">${stats.drift.unit}</div>
-            </div>
-
-            <div class="drift-ticks-row">
-              ${stats.drift.ticks.map(
-                (t) => html`
-                  <span class="drift-tick" style="height: ${t.h}; background: ${t.bg};"></span>
-                `
-              )}
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 14px;">
-              <div>
-                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                  <div class="drift-inst-name">${stats.drift.name}</div>
-                  ${stats.recommendation.topPick
-                    ? html`
-                        <span class="rank-badge">#${stats.recommendation.topPick.rank} Priority</span>
-                        <span class="rank-badge" style="background: #E58E38; color: #FFF;">
-                          ${stats.recommendation.topPick.retentionPct}% Retention
-                        </span>
-                      `
-                    : ''}
-                </div>
-                <div class="drift-ago-sub" style="margin-top: 4px;">${stats.pick.reason}</div>
-              </div>
-              <button class="btn-drift-action" @click=${() => this.handleStart(stats.drift.id)}>
-                <span>Pick it up</span>
-                <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#23241F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4.5 12h14M13 6.5l5.5 5.5L13 17.5"></path>
-                </svg>
-              </button>
-
-              <button class="queue-toggle-btn" @click=${() => (this.showFullQueue = !this.showFullQueue)}>
-                <span>${this.showFullQueue ? '▼ Hide Priority Queue' : '▶ View Scientific Priority Queue (' + stats.recommendation.rankedQueue.length + ')'}</span>
-              </button>
-
-              ${this.showFullQueue
-                ? html`
-                    <div class="queue-list-table">
-                      ${stats.recommendation.rankedQueue.map(
-                        (q, idx) => html`
-                          <div class="queue-item-row" @click=${() => this.handleStart(q.instrumentId)}>
-                            <div class="queue-item-meta">
-                              <span style="font-weight: 700; color: #767668;">#${idx + 1}</span>
-                              <span style="width: 8px; height: 8px; border-radius: 50%; background: ${q.color}; flex-shrink: 0;"></span>
-                              <span style="font-weight: 700;">${q.name}</span>
-                              <span style="font-size: 11px; color: #767668;">(#${q.rank} priority)</span>
-                            </div>
-                            <div class="queue-item-meta">
-                              <span style="font-size: 11px; color: #4A4945;">${q.retentionPct}% retention</span>
-                              <span class="queue-score-pill">${q.score}</span>
-                            </div>
-                          </div>
-                        `
-                      )}
-                    </div>
-                  `
-                : ''}
-            </div>
-          </div>
 
           <!-- 11. Kit Share Breakdown & Interactive Mute (Span 2) -->
           <div class="bench-card card-span-2">

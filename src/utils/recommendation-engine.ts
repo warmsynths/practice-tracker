@@ -1,4 +1,4 @@
-import { Instrument, Session, InstrumentScoreBreakdown, PracticeRecommendation } from '../types';
+import { Instrument, Session, InstrumentScoreBreakdown, PracticeRecommendation, RecommendationReasonDetails } from '../types';
 import { calculateInstrumentRepetition, diffCalendarDays } from './repetition-utils';
 import { startOfDay } from './date-utils';
 
@@ -147,21 +147,71 @@ export function calculatePracticeRecommendations(
 
     const finalScore = Math.round(Math.min(100, Math.max(0, rawScore)) * 10) / 10;
 
-    // Scientific rationale text
+    // Scientific rationale text & structured details
     let reason = '';
+    let reasonDetails: RecommendationReasonDetails;
+
     if (!repState.lastPracticedAt) {
-      reason = `Never logged. Baseline session ready to set Step 1 spacing interval.`;
+      const headline = 'Baseline session ready';
+      const explanation = 'Establish your baseline to initiate Step 1 spacing interval.';
+      reason = `${headline}. ${explanation}`;
+      reasonDetails = {
+        badge: 'FRESH CANVAS',
+        headline,
+        explanation,
+        icon: 'sparkles',
+      };
     } else if (isPracticedToday) {
-      reason = `Practiced today. Interleaved cooling down — switch disciplines for cognitive balance.`;
+      const headline = 'Interleaved cooling down';
+      const explanation = 'Practiced today. Switch disciplines to allow neural consolidation.';
+      reason = `${headline}. ${explanation}`;
+      reasonDetails = {
+        badge: 'BRAIN RESET',
+        headline,
+        explanation,
+        icon: 'brain',
+      };
     } else if (repState.isOverdue) {
       const d = Math.abs(repState.daysRemaining);
-      reason = `Overdue by ${d}d (Step ${repState.step}). Memory retention dropped to ${Math.round(retentionPct)}%.`;
+      const headline = `Retention dropped to ${Math.round(retentionPct)}%`;
+      const explanation = `Overdue by ${d}d (Step ${repState.step}). A quick session locks in your ${repState.intervalDays}d interval.`;
+      reason = `${headline}. ${explanation}`;
+      reasonDetails = {
+        badge: 'RUST ALERT',
+        headline,
+        explanation,
+        icon: 'bolt',
+      };
     } else if (repState.isDueToday) {
-      reason = `Due today for Step ${repState.step} (${repState.intervalDays}d interval). Retention at ${Math.round(retentionPct)}%.`;
+      const headline = `Due today for Step ${repState.step}`;
+      const explanation = `Retention at ${Math.round(retentionPct)}%. Optimal timing for your ${repState.intervalDays}d target interval.`;
+      reason = `${headline}. ${explanation}`;
+      reasonDetails = {
+        badge: 'IN SYNC',
+        headline,
+        explanation,
+        icon: 'clock',
+      };
     } else if (shareDeficit > 0.10) {
-      reason = `Rank #${rank} priority slipping — ${Math.round(shareDeficit * 100)}% behind target practice share.`;
+      const headline = `${Math.round(shareDeficit * 100)}% behind target share`;
+      const explanation = `Priority rank #${rank} is slipping. Give it airtime to restore kit balance.`;
+      reason = `${headline}. ${explanation}`;
+      reasonDetails = {
+        badge: 'KIT SLIP',
+        headline,
+        explanation,
+        icon: 'scale',
+      };
     } else {
-      reason = `Last played ${daysSince === 1 ? 'yesterday' : `${daysSince}d ago`}. Retention at ${Math.round(retentionPct)}%.`;
+      const headline = `Retention at ${Math.round(retentionPct)}%`;
+      const explanation = `Last played ${daysSince === 1 ? 'yesterday' : `${daysSince}d ago`}. Keep steady on your practice routine.`;
+      reason = `${headline}. ${explanation}`;
+      reasonDetails = {
+        badge: 'STEADY PACE',
+        headline,
+        explanation,
+        icon: 'clock',
+      };
     }
 
     breakdowns.push({
@@ -179,6 +229,7 @@ export function calculatePracticeRecommendations(
       step: repState.step,
       status: repState.status,
       reason,
+      reasonDetails,
       isPracticedToday,
     });
   }

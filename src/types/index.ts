@@ -242,6 +242,13 @@ export interface NoteThemeItem {
   size: string;
 }
 
+export interface RecommendationReasonDetails {
+  badge: string;       // Short badge hook, e.g. "RUST ALERT", "BRAIN RESET", "TARGET SLIPPING"
+  headline: string;    // Human-readable title, e.g. "Memory retention dropped to 42%"
+  explanation: string; // Contextual rationale, e.g. "Overdue by 3d. A quick 10m session locks in Step 2 memory."
+  icon: string;        // Icon key, e.g. "bolt", "brain", "scale", "sparkles", "clock"
+}
+
 export interface InstrumentScoreBreakdown {
   instrumentId: string;
   name: string;
@@ -257,6 +264,7 @@ export interface InstrumentScoreBreakdown {
   step: number; // spaced repetition step (0..5)
   status: InstrumentHeatStatus;
   reason: string; // scientific rationale explanation
+  reasonDetails?: RecommendationReasonDetails;
   isPracticedToday: boolean;
 }
 
