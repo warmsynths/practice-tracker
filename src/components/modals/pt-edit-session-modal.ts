@@ -3,6 +3,19 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { Instrument, Session } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function toLocalTimeStr(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${min}`;
+}
+
 @customElement('pt-edit-session-modal')
 export class PtEditSessionModal extends LitElement {
   static styles = [
@@ -51,13 +64,16 @@ export class PtEditSessionModal extends LitElement {
   @state() private instrumentId = '';
   @state() private duration = 0;
   @state() private sessionDate = '';
+  @state() private sessionTime = '';
   @state() private notes = '';
 
   willUpdate(changedProperties: Map<string, unknown>) {
     if (changedProperties.has('session') && this.session) {
       this.instrumentId = this.session.instrumentId;
       this.duration = this.session.duration;
-      this.sessionDate = new Date(this.session.start).toISOString().slice(0, 10);
+      const startDate = new Date(this.session.start);
+      this.sessionDate = toLocalDateStr(startDate);
+      this.sessionTime = toLocalTimeStr(startDate);
       this.notes = this.session.notes || '';
     }
   }
@@ -65,11 +81,17 @@ export class PtEditSessionModal extends LitElement {
   private handleSave() {
     if (!this.session || !this.instrumentId || this.duration <= 0) return;
 
-    const dateParts = this.sessionDate.split('-');
-    const newStart = new Date(this.session.start);
-    if (dateParts.length === 3) {
-      newStart.setFullYear(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-    }
+    const dateParts = this.sessionDate.split('-').map(Number);
+    const timeParts = (this.sessionTime || '12:00').split(':').map(Number);
+    const newStart = new Date(
+      dateParts[0],
+      dateParts[1] - 1,
+      dateParts[2],
+      timeParts[0] || 0,
+      timeParts[1] || 0,
+      0,
+      0
+    );
     const newEnd = new Date(newStart.getTime() + this.duration * 60000);
 
     const updatedSession: Session = {
@@ -150,14 +172,25 @@ export class PtEditSessionModal extends LitElement {
             />
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Date</label>
-            <input
-              type="date"
-              class="form-input"
-              .value=${this.sessionDate}
-              @input=${(e: Event) => (this.sessionDate = (e.target as HTMLInputElement).value)}
-            />
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input
+                type="date"
+                class="form-input"
+                .value=${this.sessionDate}
+                @input=${(e: Event) => (this.sessionDate = (e.target as HTMLInputElement).value)}
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Time</label>
+              <input
+                type="time"
+                class="form-input"
+                .value=${this.sessionTime}
+                @input=${(e: Event) => (this.sessionTime = (e.target as HTMLInputElement).value)}
+              />
+            </div>
           </div>
 
           <div class="form-group">
@@ -183,3 +216,4 @@ export class PtEditSessionModal extends LitElement {
     `;
   }
 }
+

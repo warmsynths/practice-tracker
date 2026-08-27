@@ -341,5 +341,34 @@ describe('PracticeStore Cloud Sync & Timestamping', () => {
       expect(settings.syncPasscode).toBe('legit-pass');
       expect(settings.userEmail).toBeUndefined();
     });
+
+    it('correctly saves and updates session start timestamp and duration when user edits time and date', () => {
+      // 1. User logs a past session at 10:15 AM on August 15
+      const initialStart = new Date('2026-08-15T10:15:00.000Z');
+      const session = practiceStore.logManualSession('guitar', initialStart, 45, 'Morning chords');
+
+      expect(new Date(session.start).toISOString()).toBe('2026-08-15T10:15:00.000Z');
+      expect(new Date(session.end).toISOString()).toBe('2026-08-15T11:00:00.000Z');
+      expect(session.duration).toBe(45);
+
+      // 2. User edits session to 14:30 (2:30 PM) and duration 60 minutes
+      const newStart = new Date('2026-08-15T14:30:00.000Z');
+      const newEnd = new Date(newStart.getTime() + 60 * 60000);
+      const updated = {
+        ...session,
+        start: newStart.toISOString(),
+        end: newEnd.toISOString(),
+        duration: 60,
+        notes: 'Afternoon practice updated',
+      };
+      practiceStore.updateSession(updated);
+
+      const retrieved = practiceStore.getSessions().find((s) => s.id === session.id);
+      expect(retrieved?.start).toBe('2026-08-15T14:30:00.000Z');
+      expect(retrieved?.end).toBe('2026-08-15T15:30:00.000Z');
+      expect(retrieved?.duration).toBe(60);
+      expect(retrieved?.notes).toBe('Afternoon practice updated');
+    });
   });
 });
+

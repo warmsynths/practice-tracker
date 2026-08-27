@@ -4,6 +4,19 @@ import { Instrument, Session } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
 import { fmtMin, dayStart, addDays } from '../../utils/bench-metrics';
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function toLocalTimeStr(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${min}`;
+}
+
 @customElement('pt-log-view')
 export class PtLogView extends LitElement {
   @property({ type: Array }) instruments: Instrument[] = [];
@@ -12,10 +25,16 @@ export class PtLogView extends LitElement {
   @state() private newOpen: boolean = false;
   @state() private newInstId: string = '';
   @state() private newMin: number = 30;
-  @state() private newDayBack: number = 1;
+  @state() private newDayBack: number = 0; // 0=today, 1=yesterday, 2=2d, 3=3d, -1=custom
+  @state() private newDate: string = toLocalDateStr(new Date());
+  @state() private newTime: string = toLocalTimeStr(new Date());
   @state() private newNote: string = '';
 
   @state() private openRowId: string | null = null;
+  @state() private editInstIdDraft: string = '';
+  @state() private editDateDraft: string = '';
+  @state() private editTimeDraft: string = '';
+  @state() private editDurationDraft: number = 30;
   @state() private editNoteDraft: string = '';
 
   static styles = [
@@ -157,6 +176,71 @@ export class PtLogView extends LitElement {
 
       .chip-btn.inactive:hover {
         background: #E5E4DC;
+      }
+
+      .when-row {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .day-chips-wrap {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .datetime-inputs-wrap {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      .duration-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      .duration-chips-wrap {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .labeled-input {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .mini-label {
+        font-size: 9.5px;
+        letter-spacing: 0.13em;
+        color: #A3A297;
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .date-time-input {
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 600;
+        color: #23241F;
+        background: #F7F6F1;
+        border: 1px solid #E7E6DF;
+        border-radius: 10px;
+        height: 36px;
+        padding: 0 10px;
+        outline: none;
+        transition: border-color 140ms ease;
+      }
+
+      .date-time-input:focus {
+        border-color: #23241F;
       }
 
       .new-inputs-row {
@@ -309,7 +393,7 @@ export class PtLogView extends LitElement {
 
       /* Inline Editor Drawer */
       .inline-editor-drawer {
-        padding: 6px 10px 14px;
+        padding: 8px 12px 14px;
         display: flex;
         flex-direction: column;
         gap: 12px;
@@ -373,6 +457,17 @@ export class PtLogView extends LitElement {
           border-radius: 14px;
         }
 
+        .when-row {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 10px;
+        }
+
+        .datetime-inputs-wrap {
+          width: 100%;
+          justify-content: space-between;
+        }
+
         .new-inputs-row {
           flex-direction: column;
         }
@@ -417,22 +512,50 @@ export class PtLogView extends LitElement {
 
   private handleToggleNew() {
     this.newOpen = !this.newOpen;
-    if (this.newOpen && !this.newInstId && this.instruments.length > 0) {
-      this.newInstId = this.instruments.filter((i) => !i.archived)[0]?.id || this.instruments[0].id;
+    if (this.newOpen) {
+      if (!this.newInstId && this.instruments.length > 0) {
+        this.newInstId = this.instruments.filter((i) => !i.archived)[0]?.id || this.instruments[0].id;
+      }
+      const now = new Date();
+      this.newDayBack = 0;
+      this.newDate = toLocalDateStr(now);
+      this.newTime = toLocalTimeStr(now);
+      this.newNote = '';
     }
   }
 
+  private handleSelectDayBack(d: number) {
+    this.newDayBack = d;
+    const targetDate = addDays(dayStart(new Date()), -d);
+    this.newDate = toLocalDateStr(targetDate);
+  }
+
+  private handleDateInput(e: Event) {
+    const val = (e.target as HTMLInputElement).value;
+    this.newDate = val;
+    const today = toLocalDateStr(new Date());
+    const yesterday = toLocalDateStr(addDays(dayStart(new Date()), -1));
+    const twoDaysAgo = toLocalDateStr(addDays(dayStart(new Date()), -2));
+    const threeDaysAgo = toLocalDateStr(addDays(dayStart(new Date()), -3));
+
+    if (this.newDate === today) this.newDayBack = 0;
+    else if (this.newDate === yesterday) this.newDayBack = 1;
+    else if (this.newDate === twoDaysAgo) this.newDayBack = 2;
+    else if (this.newDate === threeDaysAgo) this.newDayBack = 3;
+    else this.newDayBack = -1;
+  }
+
   private handleAddPastSession() {
-    if (!this.newInstId) return;
-    const now = new Date();
-    const d = addDays(dayStart(now), -this.newDayBack);
-    d.setHours(19, 0, 0, 0);
+    if (!this.newInstId || !this.newDate) return;
+    const [year, month, day] = this.newDate.split('-').map(Number);
+    const [hours, minutes] = (this.newTime || '12:00').split(':').map(Number);
+    const sessionStart = new Date(year, month - 1, day, hours || 0, minutes || 0, 0, 0);
 
     this.dispatchEvent(
       new CustomEvent('save-manual-session', {
         detail: {
           instrumentId: this.newInstId,
-          start: d,
+          start: sessionStart,
           duration: this.newMin,
           notes: this.newNote.trim() || undefined,
         },
@@ -445,36 +568,40 @@ export class PtLogView extends LitElement {
     this.newNote = '';
   }
 
-  private handleToggleRow(sessionId: string, currentNotes?: string) {
-    if (this.openRowId === sessionId) {
+  private handleToggleRow(r: { id: string; instrumentId: string; t: Date; min: number; notes?: string; start: string; duration: number }) {
+    if (this.openRowId === r.id) {
       this.openRowId = null;
     } else {
-      this.openRowId = sessionId;
-      this.editNoteDraft = currentNotes || '';
+      this.openRowId = r.id;
+      this.editInstIdDraft = r.instrumentId;
+      this.editDateDraft = toLocalDateStr(r.t);
+      this.editTimeDraft = toLocalTimeStr(r.t);
+      this.editDurationDraft = r.duration || r.min;
+      this.editNoteDraft = r.notes || '';
     }
   }
 
-  private handleSetDuration(session: Session, newDuration: number) {
-    this.dispatchEvent(
-      new CustomEvent('update-session', {
-        detail: {
-          session: {
-            ...session,
-            duration: newDuration,
-          },
-        },
-        bubbles: true,
-        composed: true,
-      })
-    );
-  }
+  private handleSaveRow(session: Session) {
+    const [year, month, day] = (this.editDateDraft || toLocalDateStr(new Date(session.start)))
+      .split('-')
+      .map(Number);
+    const [hours, minutes] = (this.editTimeDraft || toLocalTimeStr(new Date(session.start)))
+      .split(':')
+      .map(Number);
 
-  private handleSaveNotes(session: Session) {
+    const newStart = new Date(year, month - 1, day, hours || 0, minutes || 0, 0, 0);
+    const duration = Math.max(1, Math.round(this.editDurationDraft || session.duration || 1));
+    const newEnd = new Date(newStart.getTime() + duration * 60000);
+
     this.dispatchEvent(
       new CustomEvent('update-session', {
         detail: {
           session: {
             ...session,
+            instrumentId: this.editInstIdDraft || session.instrumentId,
+            start: newStart.toISOString(),
+            end: newEnd.toISOString(),
+            duration: duration,
             notes: this.editNoteDraft.trim() || undefined,
           },
         },
@@ -579,8 +706,9 @@ export class PtLogView extends LitElement {
                     })}
                   </div>
 
-                  <div style="display: flex; gap: 20px; flex-wrap: wrap; align-items: center;">
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                  <div class="form-section-title">When & How Long?</div>
+                  <div class="when-row">
+                    <div class="day-chips-wrap">
                       ${[
                         { d: 0, label: 'Today' },
                         { d: 1, label: 'Yesterday' },
@@ -590,7 +718,7 @@ export class PtLogView extends LitElement {
                         (item) => html`
                           <button
                             class="chip-btn ${this.newDayBack === item.d ? 'active' : 'inactive'}"
-                            @click=${() => (this.newDayBack = item.d)}
+                            @click=${() => this.handleSelectDayBack(item.d)}
                           >
                             ${item.label}
                           </button>
@@ -598,7 +726,31 @@ export class PtLogView extends LitElement {
                       )}
                     </div>
 
-                    <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <div class="datetime-inputs-wrap">
+                      <div class="labeled-input">
+                        <span class="mini-label">DATE</span>
+                        <input
+                          type="date"
+                          class="date-time-input"
+                          .value=${this.newDate}
+                          @input=${this.handleDateInput}
+                        />
+                      </div>
+                      <div class="labeled-input">
+                        <span class="mini-label">TIME</span>
+                        <input
+                          type="time"
+                          class="date-time-input"
+                          .value=${this.newTime}
+                          @input=${(e: Event) => (this.newTime = (e.target as HTMLInputElement).value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="duration-row">
+                    <span class="mini-label">DURATION</span>
+                    <div class="duration-chips-wrap">
                       ${DURATION_OPTS.map(
                         (m) => html`
                           <button
@@ -619,6 +771,9 @@ export class PtLogView extends LitElement {
                       placeholder="Note / what did you work on? (optional)"
                       .value=${this.newNote}
                       @input=${(e: Event) => (this.newNote = (e.target as HTMLInputElement).value)}
+                      @keydown=${(e: KeyboardEvent) => {
+                        if (e.key === 'Enter') this.handleAddPastSession();
+                      }}
                     />
                     <button class="btn-add-log" @click=${this.handleAddPastSession}>
                       Add to the log
@@ -653,7 +808,7 @@ export class PtLogView extends LitElement {
 
                         return html`
                           <div class="log-row-container ${isOpen ? 'open' : ''}">
-                            <div class="log-row-main" @click=${() => this.handleToggleRow(r.id, r.notes)}>
+                            <div class="log-row-main" @click=${() => this.handleToggleRow(r)}>
                               <div class="row-time">${hhmm(r.t)}</div>
                               <span class="row-dot" style="background: ${instrument.color};"></span>
                               <div class="row-inst-name">${instrument.name}</div>
@@ -669,18 +824,59 @@ export class PtLogView extends LitElement {
                             ${isOpen
                               ? html`
                                   <div class="inline-editor-drawer">
-                                    <div style="display: flex; align-items: center; gap: 7px; flex-wrap: wrap;">
-                                      <span style="font-size: 9.5px; letter-spacing: 0.13em; color: #A3A297; font-weight: 700; margin-right: 4px;">LENGTH</span>
-                                      ${DURATION_OPTS.map(
-                                        (m) => html`
-                                          <button
-                                            class="chip-btn ${r.min === m ? 'active' : 'inactive'}"
-                                            @click=${() => this.handleSetDuration(r, m)}
-                                          >
-                                            ${m}m
-                                          </button>
-                                        `
-                                      )}
+                                    <div style="display: flex; flex-direction: column; gap: 6px;">
+                                      <span class="mini-label">INSTRUMENT</span>
+                                      <div class="pills-wrap">
+                                        ${activeInstruments.map((i) => {
+                                          const isSel = (this.editInstIdDraft || r.instrumentId) === i.id;
+                                          return html`
+                                            <div
+                                              class="inst-select-pill"
+                                              style="padding: 6px 12px; font-size: 12px; background: ${isSel ? i.color : '#FFFFFF'}; color: ${isSel ? '#FBFBF9' : '#23241F'}; border-color: ${isSel ? i.color : '#E7E6DF'};"
+                                              @click=${() => (this.editInstIdDraft = i.id)}
+                                            >
+                                              ${i.name}
+                                            </div>
+                                          `;
+                                        })}
+                                      </div>
+                                    </div>
+
+                                    <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
+                                      <div class="labeled-input">
+                                        <span class="mini-label">DATE</span>
+                                        <input
+                                          type="date"
+                                          class="date-time-input"
+                                          style="background: #FFFFFF;"
+                                          .value=${this.editDateDraft}
+                                          @input=${(e: Event) => (this.editDateDraft = (e.target as HTMLInputElement).value)}
+                                        />
+                                      </div>
+                                      <div class="labeled-input">
+                                        <span class="mini-label">TIME</span>
+                                        <input
+                                          type="time"
+                                          class="date-time-input"
+                                          style="background: #FFFFFF;"
+                                          .value=${this.editTimeDraft}
+                                          @input=${(e: Event) => (this.editTimeDraft = (e.target as HTMLInputElement).value)}
+                                        />
+                                      </div>
+                                      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                        <span class="mini-label" style="margin-right: 2px;">LENGTH</span>
+                                        ${DURATION_OPTS.map(
+                                          (m) => html`
+                                            <button
+                                              class="chip-btn ${this.editDurationDraft === m ? 'active' : 'inactive'}"
+                                              style="${this.editDurationDraft === m ? '' : 'background: #FFFFFF;'}"
+                                              @click=${() => (this.editDurationDraft = m)}
+                                            >
+                                              ${m}m
+                                            </button>
+                                          `
+                                        )}
+                                      </div>
                                     </div>
 
                                     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -693,14 +889,14 @@ export class PtLogView extends LitElement {
                                         @input=${(e: Event) =>
                                           (this.editNoteDraft = (e.target as HTMLInputElement).value)}
                                         @keydown=${(e: KeyboardEvent) => {
-                                          if (e.key === 'Enter') this.handleSaveNotes(r);
+                                          if (e.key === 'Enter') this.handleSaveRow(r);
                                         }}
                                       />
                                       <button class="btn-del-row" @click=${() => this.handleDelete(r.id)}>
                                         Delete
                                       </button>
-                                      <button class="btn-done-row" @click=${() => this.handleSaveNotes(r)}>
-                                        Done
+                                      <button class="btn-done-row" @click=${() => this.handleSaveRow(r)}>
+                                        Save Changes
                                       </button>
                                     </div>
                                   </div>
@@ -723,3 +919,4 @@ export class PtLogView extends LitElement {
     `;
   }
 }
+

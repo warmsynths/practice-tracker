@@ -3,6 +3,19 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { Instrument } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
 
+function toLocalDateStr(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function toLocalTimeStr(d: Date): string {
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `${h}:${min}`;
+}
+
 @customElement('pt-manual-entry-modal')
 export class PtManualEntryModal extends LitElement {
   static styles = [
@@ -64,7 +77,8 @@ export class PtManualEntryModal extends LitElement {
 
   @state() private selectedInstrumentId = '';
   @state() private durationMinutes = 20;
-  @state() private sessionDate = new Date().toISOString().slice(0, 10);
+  @state() private sessionDate = toLocalDateStr(new Date());
+  @state() private sessionTime = toLocalTimeStr(new Date());
   @state() private notes = '';
 
   connectedCallback() {
@@ -78,6 +92,11 @@ export class PtManualEntryModal extends LitElement {
     if (changedProperties.has('instruments') && this.instruments.length > 0 && !this.selectedInstrumentId) {
       this.selectedInstrumentId = this.instruments[0].id;
     }
+    if (changedProperties.has('open') && this.open) {
+      const now = new Date();
+      this.sessionDate = toLocalDateStr(now);
+      this.sessionTime = toLocalTimeStr(now);
+    }
   }
 
   private setPreset(min: number) {
@@ -87,11 +106,17 @@ export class PtManualEntryModal extends LitElement {
   private handleSave() {
     if (!this.selectedInstrumentId || this.durationMinutes <= 0) return;
 
-    const dateParts = this.sessionDate.split('-');
-    const sessionTime = new Date();
-    if (dateParts.length === 3) {
-      sessionTime.setFullYear(parseInt(dateParts[0]), parseInt(dateParts[1]) - 1, parseInt(dateParts[2]));
-    }
+    const dateParts = this.sessionDate.split('-').map(Number);
+    const timeParts = (this.sessionTime || '12:00').split(':').map(Number);
+    const sessionTime = new Date(
+      dateParts[0],
+      dateParts[1] - 1,
+      dateParts[2],
+      timeParts[0] || 0,
+      timeParts[1] || 0,
+      0,
+      0
+    );
 
     this.dispatchEvent(
       new CustomEvent('save-manual-session', {
@@ -166,14 +191,25 @@ export class PtManualEntryModal extends LitElement {
             />
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Date</label>
-            <input
-              type="date"
-              class="form-input"
-              .value=${this.sessionDate}
-              @input=${(e: Event) => (this.sessionDate = (e.target as HTMLInputElement).value)}
-            />
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input
+                type="date"
+                class="form-input"
+                .value=${this.sessionDate}
+                @input=${(e: Event) => (this.sessionDate = (e.target as HTMLInputElement).value)}
+              />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Time</label>
+              <input
+                type="time"
+                class="form-input"
+                .value=${this.sessionTime}
+                @input=${(e: Event) => (this.sessionTime = (e.target as HTMLInputElement).value)}
+              />
+            </div>
           </div>
 
           <div class="form-group">
@@ -195,3 +231,4 @@ export class PtManualEntryModal extends LitElement {
     `;
   }
 }
+
