@@ -111,4 +111,50 @@ describe('Bench Metrics Calculations', () => {
     expect(fmtMin(90)).toBe('1h 30m');
     expect(fmtMin(125)).toBe('2h 5m');
   });
+
+  it('generates NextUp Bento data and handles retargeting selection', () => {
+    const now = new Date(2026, 7, 23, 14, 0, 0);
+    const today = dayStart(now);
+
+    const sessions: Session[] = [
+      {
+        id: 's1',
+        instrumentId: 'guitar',
+        start: today.toISOString(),
+        end: new Date(today.getTime() + 30 * 60000).toISOString(),
+        duration: 30,
+      },
+      {
+        id: 's2',
+        instrumentId: 'piano',
+        start: addDays(today, -3).toISOString(),
+        end: new Date(addDays(today, -3).getTime() + 45 * 60000).toISOString(),
+        duration: 45,
+      },
+      // Bass has 0 sessions
+    ];
+
+    // Default nextUp pick (Bass because it was never played)
+    const statsDefault = calculateBenchStats(sessions, TEST_INSTRUMENTS, { now });
+    expect(statsDefault.nextUp).toBeDefined();
+    expect(statsDefault.nextUp.selectedId).toBe('bass');
+    expect(statsDefault.nextUp.name).toBe('Bass');
+    expect(statsDefault.nextUp.chips.length).toBe(3);
+    expect(statsDefault.nextUp.queue.length).toBe(3);
+    expect(statsDefault.nextUp.queue[0].id).toBe('bass');
+    expect(statsDefault.nextUp.queue[0].flag).toBe('NEVER');
+    expect(statsDefault.nextUp.ticks.length).toBe(14);
+
+    // Retargeting to guitar
+    const statsRetargeted = calculateBenchStats(sessions, TEST_INSTRUMENTS, {
+      now,
+      selectedInstrumentId: 'guitar',
+    });
+    expect(statsRetargeted.nextUp.selectedId).toBe('guitar');
+    expect(statsRetargeted.nextUp.name).toBe('Guitar');
+    expect(statsRetargeted.nextUp.num).toBe('0');
+    expect(statsRetargeted.nextUp.unit).toBe('days since');
+    expect(statsRetargeted.nextUp.chips.find((c) => c.id === 'guitar')?.isSelected).toBe(true);
+    expect(statsRetargeted.nextUp.queue.find((q) => q.id === 'guitar')?.isSelected).toBe(true);
+  });
 });

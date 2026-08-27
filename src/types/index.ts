@@ -273,4 +273,38 @@ export interface PracticeRecommendation {
   rankedQueue: InstrumentScoreBreakdown[];
 }
 
+export interface NextUpData {
+  selectedId: string;
+  name: string;
+  color: string;
+  num: string;
+  unit: string;
+  rankLabel: string;
+  rank: number;
+  line: string;
+  reason: string;
+  reasonDetails?: RecommendationReasonDetails;
+  cta: string;
+  ticks: { h: string; bg: string }[];
+  chips: {
+    id: string;
+    name: string;
+    color: string;
+    pct: string;
+    isSelected: boolean;
+  }[];
+  queue: {
+    id: string;
+    rank: string;
+    name: string;
+    color: string;
+    pct: string;
+    ago: string;
+    flag: string;
+    flagBg: string;
+    isSelected: boolean;
+    reason?: string;
+  }[];
+}
+
 

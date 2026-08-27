@@ -21,7 +21,7 @@ export class PtMainView extends LitElement {
   @state() private quickLogOpen: boolean = false;
   @state() private recentEndedSession: { id: string; name: string; mins: number; notes: string } | null = null;
   @state() private toastTimeout: any = null;
-  @state() private showReasonWhy: boolean = false;
+  @state() private selectedRetargetId: string | null = null;
 
   static styles = [
     commonStyles,
@@ -37,100 +37,28 @@ export class PtMainView extends LitElement {
       .bench-wrap {
         display: flex;
         flex-direction: column;
-        gap: 20px;
+        gap: 14px;
         width: 100%;
-        max-width: 1000px;
+        max-width: 1080px;
         margin: 0 auto;
       }
 
-
-      /* Live Start Bar */
-      .live-start-bar {
-        background: #FAFAF7;
-        border: 1px solid #E7E6DF;
-        border-radius: 22px;
+      /* Running Active State Bar */
+      .running-session-bar {
+        background: #EFE9F1;
+        color: #23241F;
+        border-radius: 20px;
         padding: 14px 18px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
-        box-shadow: 0 4px 20px rgba(35, 36, 31, 0.04);
-        transition: background-color 240ms ease, border-color 240ms ease;
-      }
-
-      .live-start-bar.running {
-        background: #F1ECE6;
-        border-color: #D6D0C5;
-      }
-
-      .start-chips-group {
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        gap: 18px;
         flex-wrap: wrap;
-        min-width: 0;
+        box-shadow: 0 2px 10px rgba(35, 36, 31, 0.04);
+        animation: riseIn 200ms ease-out both;
       }
 
-      .inst-chip {
-        background: #EFEEE9;
-        border: 1px solid #E7E6DF;
-        border-radius: 12px;
-        padding: 8px 14px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        font-size: 13px;
-        font-weight: 700;
-        color: #23241F;
-        transition: background-color 150ms ease, transform 150ms ease;
-        user-select: none;
-      }
-
-      .inst-chip:hover {
-        background: #E5E4DC;
-        transform: translateY(-1px);
-      }
-
-      .inst-chip:active {
-        transform: scale(0.97);
-      }
-
-      .inst-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        flex-shrink: 0;
-      }
-
-      .btn-start-primary {
-        background: #4F6353;
-        color: #F7F6F1;
-        border-radius: 13px;
-        padding: 11px 20px;
-        font-size: 13.5px;
-        font-weight: 700;
-        cursor: pointer;
-        white-space: nowrap;
-        flex-shrink: 0;
-        border: none;
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        transition: background 180ms ease, transform 160ms ease;
-      }
-
-      .btn-start-primary:hover {
-        background: #435447;
-        transform: translateY(-1px);
-      }
-
-      .btn-start-primary:active {
-        transform: scale(0.97);
-      }
-
-      /* Running Active State */
-      .running-indicator-wrap {
+      .running-info-left {
         display: flex;
         align-items: center;
         gap: 14px;
@@ -138,11 +66,11 @@ export class PtMainView extends LitElement {
       }
 
       .running-pulse-dot {
-        width: 9px;
-        height: 9px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
         background: #6B7F6E;
-        animation: softPulse 2.2s ease-in-out infinite;
+        animation: softPulse 2.4s ease-in-out infinite;
         flex-shrink: 0;
       }
 
@@ -163,7 +91,7 @@ export class PtMainView extends LitElement {
         color: #23241F;
       }
 
-      .running-actions {
+      .running-actions-right {
         display: flex;
         align-items: center;
         gap: 12px;
@@ -173,12 +101,12 @@ export class PtMainView extends LitElement {
         background: #4F6353;
         color: #F7F6F1;
         border-radius: 13px;
-        padding: 11px 22px;
+        padding: 12px 22px;
         font-size: 13.5px;
         font-weight: 700;
         border: none;
         cursor: pointer;
-        transition: background 180ms ease, transform 160ms ease;
+        transition: background-color 160ms ease-out, transform 140ms ease;
       }
 
       .btn-end-session:hover {
@@ -200,35 +128,383 @@ export class PtMainView extends LitElement {
         color: #B4543C;
       }
 
-      /* Live Start Actions Group */
-      .live-start-actions {
+      /* Consolidated Next Choice Bento (Idle state) */
+      .next-choice-bento {
+        background: #4F6353;
+        color: #F2F1EC;
+        border-radius: 22px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        box-shadow: 0 4px 20px rgba(35, 36, 31, 0.06);
+        animation: riseIn 240ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+      }
+
+      .retarget-chips-header {
         display: flex;
         align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      }
+
+      .retarget-chips-list {
+        display: flex;
+        gap: 7px;
+        flex-wrap: wrap;
+        min-width: 0;
+      }
+
+      .retarget-chip {
+        background: rgba(250, 250, 247, 0.10);
+        border: 1px solid rgba(242, 241, 236, 0.22);
+        color: #EDECE3;
+        border-radius: 12px;
+        padding: 8px 13px;
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        cursor: pointer;
+        flex-shrink: 0;
+        font-family: inherit;
+        font-size: 12.5px;
+        font-weight: 700;
+        transition: background-color 160ms ease-out, color 160ms ease-out, border-color 160ms ease-out;
+        user-select: none;
+      }
+
+      .retarget-chip:hover:not(.selected) {
+        background: rgba(250, 250, 247, 0.18);
+        border-color: rgba(242, 241, 236, 0.35);
+      }
+
+      .retarget-chip.selected {
+        background: rgba(250, 250, 247, 0.97);
+        border-color: transparent;
+        color: #23241F;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+      }
+
+      .retarget-chip-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .retarget-chip-name {
+        font-size: 12.5px;
+        font-weight: 700;
+        white-space: nowrap;
+      }
+
+      .retarget-chip-pct {
+        font-size: 11.5px;
+        color: rgba(237, 236, 227, 0.60);
+        white-space: nowrap;
+      }
+
+      .retarget-chip-pct.selected {
+        color: #767668;
+      }
+
+      .retarget-header-hint {
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+        color: rgba(237, 236, 227, 0.6);
+        font-weight: 700;
+        flex-shrink: 0;
+        text-transform: uppercase;
+      }
+
+      .bento-divider {
+        height: 1px;
+        background: rgba(242, 241, 236, 0.16);
+      }
+
+      .bento-two-col {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 400px;
+        gap: 20px;
+        align-items: start;
+      }
+
+      @media (max-width: 900px) {
+        .bento-two-col {
+          grid-template-columns: 1fr;
+          gap: 18px;
+        }
+      }
+
+      .bento-col-left {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        min-width: 0;
+      }
+
+      .bento-stat-row {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .bento-stat-left {
+        min-width: 0;
+      }
+
+      .bento-num-line {
+        display: flex;
+        align-items: baseline;
         gap: 10px;
       }
 
-      /* Quick Past Logging Drawer / Row */
-      .quick-log-toggle-btn {
-        background: transparent;
-        border: 1px dashed #C9C8BF;
-        border-radius: 12px;
-        padding: 8px 12px;
-        font-size: 12px;
-        font-weight: 600;
-        color: #767668;
-        cursor: pointer;
+      .bento-big-num {
+        font-size: 62px;
+        font-weight: 700;
+        letter-spacing: -0.05em;
+        line-height: 0.9;
+        color: #F2F1EC;
+      }
+
+      .bento-unit-label {
+        font-size: 13.5px;
+        font-weight: 700;
+        opacity: 0.7;
+        color: #F2F1EC;
+      }
+
+      .bento-name-rank-line {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 10px;
+      }
+
+      .bento-inst-name {
+        font-size: 26px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        color: #F2F1EC;
+      }
+
+      .bento-rank-pill {
+        font-size: 12.5px;
+        font-weight: 700;
+        background: rgba(242, 241, 236, 0.14);
+        color: #F2F1EC;
+        border-radius: 8px;
+        padding: 3px 9px;
+      }
+
+      .bento-sub-line {
+        font-size: 13px;
+        opacity: 0.76;
+        margin-top: 7px;
+        color: #F2F1EC;
+      }
+
+      .bento-ticks-track {
+        display: flex;
+        align-items: flex-end;
+        gap: 3px;
+        height: 38px;
+        flex-shrink: 0;
+      }
+
+      .bento-tick {
+        width: 7px;
+        border-radius: 2px;
+        transition: height 220ms cubic-bezier(0.2, 0.8, 0.2, 1);
+      }
+
+      .bento-reason-italic {
+        font-family: 'Instrument Serif', serif;
+        font-style: italic;
+        font-size: 17px;
+        opacity: 0.82;
+        line-height: 1.35;
+        text-wrap: pretty;
+        color: #F2F1EC;
+      }
+
+      .bento-actions-row {
+        display: flex;
+        gap: 10px;
+        align-items: stretch;
+        flex-wrap: wrap;
+      }
+
+      .btn-bento-start {
+        flex: 1;
+        min-width: 200px;
+        background: #FAFAF7;
+        color: #23241F;
+        border: none;
+        border-radius: 15px;
+        height: 54px;
         display: flex;
         align-items: center;
+        justify-content: center;
+        gap: 9px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background-color 160ms ease-out, transform 140ms ease;
+        font-family: inherit;
+      }
+
+      .btn-bento-start:hover {
+        background: #FFFFFF;
+        transform: translateY(-1px);
+      }
+
+      .btn-bento-start:active {
+        transform: scale(0.98);
+      }
+
+      .btn-bento-past-log {
+        border: 1px dashed rgba(242, 241, 236, 0.4);
+        color: #EDECE3;
+        background: transparent;
+        border-radius: 15px;
+        height: 54px;
+        padding: 0 18px;
+        display: flex;
+        align-items: center;
+        font-size: 12.5px;
+        font-weight: 700;
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background-color 160ms ease-out;
+        font-family: inherit;
+      }
+
+      .btn-bento-past-log:hover {
+        background: rgba(250, 250, 247, 0.10);
+      }
+
+      .bento-col-right {
+        background: rgba(35, 45, 36, 0.30);
+        border-radius: 18px;
+        padding: 14px;
+        display: flex;
+        flex-direction: column;
+        gap: 7px;
+        min-width: 0;
+      }
+
+      .bento-queue-header {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 12px;
+      }
+
+      .queue-title-tag {
+        font-size: 9.5px;
+        letter-spacing: 0.13em;
+        color: rgba(237, 236, 227, 0.66);
+        font-weight: 700;
+        text-transform: uppercase;
+      }
+
+      .queue-subtitle-tag {
+        font-size: 11px;
+        color: rgba(237, 236, 227, 0.55);
+      }
+
+      .bento-queue-list {
+        display: flex;
+        flex-direction: column;
         gap: 6px;
-        transition: all 160ms ease;
       }
 
-      .quick-log-toggle-btn:hover {
-        border-color: #767668;
-        color: #23241F;
-        background: #F4F3ED;
+      .queue-row-item {
+        background: transparent;
+        border: 1px solid rgba(242, 241, 236, 0.13);
+        border-radius: 12px;
+        padding: 9px 11px;
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        cursor: pointer;
+        transition: background-color 160ms ease-out, border-color 160ms ease-out;
+        user-select: none;
       }
 
+      .queue-row-item:hover:not(.selected) {
+        background: rgba(250, 250, 247, 0.08);
+      }
+
+      .queue-row-item.selected {
+        background: rgba(250, 250, 247, 0.16);
+        border-color: rgba(242, 241, 236, 0.30);
+      }
+
+      .queue-rank-num {
+        font-size: 11px;
+        font-weight: 700;
+        opacity: 0.58;
+        width: 17px;
+        flex-shrink: 0;
+        color: #F2F1EC;
+      }
+
+      .queue-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+
+      .queue-inst-name {
+        font-size: 12.5px;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        min-width: 0;
+        color: #F2F1EC;
+      }
+
+      .queue-flag-badge {
+        font-size: 8.5px;
+        letter-spacing: 0.08em;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 3px 6px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        color: #F2F1EC;
+        text-transform: uppercase;
+      }
+
+      .queue-spacer {
+        flex: 1;
+      }
+
+      .queue-ago-text {
+        font-size: 11px;
+        opacity: 0.6;
+        white-space: nowrap;
+        color: #F2F1EC;
+      }
+
+      .queue-pct-pill {
+        font-size: 11px;
+        font-weight: 700;
+        background: rgba(242, 241, 236, 0.14);
+        border-radius: 7px;
+        padding: 3px 7px;
+        white-space: nowrap;
+        color: #F2F1EC;
+      }
+
+      /* Quick Past Logging Drawer / Row */
       .quick-log-panel {
         background: #FAFAF7;
         border: 1px solid #E7E6DF;
@@ -421,7 +697,7 @@ export class PtMainView extends LitElement {
       .bench-cards-grid {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        gap: 16px;
+        gap: 12px;
       }
 
       @media (max-width: 768px) {
@@ -442,7 +718,7 @@ export class PtMainView extends LitElement {
 
       .bench-card {
         background: #FAFAF7;
-        border-radius: 22px;
+        border-radius: 20px;
         padding: 22px;
         display: flex;
         flex-direction: column;
@@ -469,66 +745,6 @@ export class PtMainView extends LitElement {
       .card-sub-label {
         font-size: 11px;
         color: #A3A297;
-      }
-
-      .queue-toggle-btn {
-        background: transparent;
-        border: none;
-        color: #4F6353;
-        font-size: 11.5px;
-        font-weight: 700;
-        cursor: pointer;
-        padding: 6px 0 0;
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        outline: none;
-      }
-
-      .queue-toggle-btn:hover {
-        color: #23241F;
-      }
-
-      .queue-list-table {
-        display: flex;
-        flex-direction: column;
-        gap: 6px;
-        margin-top: 10px;
-        padding-top: 10px;
-        border-top: 1px dashed #E0DFD7;
-      }
-
-      .queue-item-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 6px 10px;
-        background: #FAFAF7;
-        border-radius: 10px;
-        border: 1px solid #EAE8E1;
-        font-size: 12px;
-        cursor: pointer;
-        transition: background-color 140ms ease;
-      }
-
-      .queue-item-row:hover {
-        background: #F0EFEA;
-      }
-
-      .queue-item-meta {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-
-      .queue-score-pill {
-        font-size: 10.5px;
-        font-weight: 800;
-        background: #23241F;
-        color: #FAFAF7;
-        padding: 2px 6px;
-        border-radius: 6px;
       }
 
       /* Day Streak Card */
@@ -566,7 +782,7 @@ export class PtMainView extends LitElement {
 
       .bar-14-col {
         flex: 1;
-        height: 32px;
+        height: 30px;
         display: flex;
         flex-direction: column;
         justify-content: flex-end;
@@ -620,7 +836,7 @@ export class PtMainView extends LitElement {
       }
 
       .banked-info-title {
-        font-size: 19px;
+        font-size: 20px;
         font-weight: 700;
         letter-spacing: -0.02em;
         line-height: 1.25;
@@ -642,7 +858,7 @@ export class PtMainView extends LitElement {
         margin-top: 6px;
       }
 
-      @media (max-width: 640px) {
+      @media (max-width: 760px) {
         .one-away-grid {
           grid-template-columns: 1fr;
         }
@@ -651,7 +867,7 @@ export class PtMainView extends LitElement {
       .one-away-item {
         border: 1px solid #E7E6DF;
         border-radius: 16px;
-        padding: 16px;
+        padding: 18px;
         cursor: pointer;
         transition: background-color 160ms ease-out, border-color 160ms ease-out, transform 160ms ease;
       }
@@ -659,7 +875,7 @@ export class PtMainView extends LitElement {
       .one-away-item:hover {
         background: #F4F3ED;
         border-color: #D9D8CF;
-        transform: translateY(-2px);
+        transform: translateY(-1px);
       }
 
       .one-away-top {
@@ -669,7 +885,7 @@ export class PtMainView extends LitElement {
       }
 
       .one-away-big {
-        font-size: 28px;
+        font-size: 32px;
         font-weight: 700;
         letter-spacing: -0.04em;
         line-height: 1;
@@ -684,271 +900,19 @@ export class PtMainView extends LitElement {
       }
 
       .one-away-desc {
-        font-size: 13px;
+        font-size: 13.5px;
         color: #5A594F;
-        margin-top: 8px;
-        line-height: 1.45;
-      }
-
-      /* Drift Card (Play This Next) */
-      .drift-card {
-        background: #4F6353;
-        color: #F2F1EC;
-        border-radius: 22px;
-        padding: 22px;
-        display: flex;
-        flex-direction: column;
-        justify-content: space-between;
-        gap: 18px;
-        position: relative;
-        overflow: hidden;
-      }
-
-      .drift-top-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-      }
-
-      .drift-tag {
-        font-size: 9.5px;
-        letter-spacing: 0.13em;
-        font-weight: 700;
-        opacity: 0.7;
-      }
-
-      .drift-num-row {
-        display: flex;
-        align-items: flex-end;
-        gap: 10px;
-        line-height: 0.84;
-      }
-
-      .drift-big-num {
-        font-size: 72px;
-        font-weight: 700;
-        letter-spacing: -0.055em;
-      }
-
-      .drift-unit-label {
-        font-size: 13px;
-        font-weight: 700;
-        opacity: 0.72;
-        padding-bottom: 6px;
-      }
-
-      .drift-ticks-row {
-        display: flex;
-        align-items: flex-end;
-        gap: 4px;
-        height: 30px;
-      }
-
-      .drift-tick {
-        flex: 1;
-        border-radius: 3px;
-      }
-
-      .drift-inst-name {
-        font-size: 24px;
-        font-weight: 700;
-        letter-spacing: -0.03em;
-        line-height: 1.1;
-      }
-
-      .drift-ago-sub {
-        font-size: 12.5px;
-        opacity: 0.7;
-        margin-top: 4px;
-      }
-
-      .reason-badge {
-        font-size: 10px;
-        font-weight: 800;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        background: rgba(242, 241, 236, 0.16);
-        color: #F2F1EC;
-        padding: 3px 9px;
-        border-radius: 8px;
-        border: 1px solid rgba(242, 241, 236, 0.22);
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-        white-space: nowrap;
-      }
-
-      .reason-headline-text {
-        font-size: 13.5px;
-        font-weight: 700;
-        color: #F2F1EC;
-        margin-top: 6px;
-      }
-
-      .reason-explanation-text {
-        font-size: 12.5px;
-        color: rgba(242, 241, 236, 0.82);
-        line-height: 1.4;
-        margin-top: 3px;
-      }
-
-      .queue-reason-tag {
-        font-size: 9.5px;
-        font-weight: 800;
-        letter-spacing: 0.06em;
-        background: #E8E7E0;
-        color: #4A4945;
-        padding: 2px 6px;
-        border-radius: 5px;
-        text-transform: uppercase;
-        white-space: nowrap;
-      }
-
-      .reason-info-btn {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background: rgba(242, 241, 236, 0.18);
-        border: 1px solid rgba(242, 241, 236, 0.3);
-        color: #F2F1EC;
-        font-size: 11px;
-        font-weight: 800;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        transition: background-color 160ms ease, color 160ms ease;
-        padding: 0;
-        line-height: 1;
-        outline: none;
-      }
-
-      .reason-info-btn:hover,
-      .reason-info-btn.active {
-        background: #F2F1EC;
-        color: #23241F;
-      }
-
-      .reason-why-drawer {
-        background: rgba(0, 0, 0, 0.25);
-        border: 1px solid rgba(242, 241, 236, 0.16);
-        border-radius: 12px;
-        padding: 12px 14px;
-        margin-top: 6px;
-        font-size: 12px;
-        color: rgba(242, 241, 236, 0.92);
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        animation: riseIn 180ms ease-out both;
-      }
-
-      .why-metric-row {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 11px;
-        color: rgba(242, 241, 236, 0.8);
-      }
-
-      .drift-hero-grid {
-        display: grid;
-        grid-template-columns: 1.2fr 1fr;
-        gap: 24px;
-        align-items: start;
-      }
-
-      @media (max-width: 820px) {
-        .drift-hero-grid {
-          grid-template-columns: 1fr;
-          gap: 18px;
-        }
-      }
-
-      .drift-hero-left {
-        display: flex;
-        flex-direction: column;
-        gap: 16px;
-      }
-
-      .drift-hero-right {
-        background: rgba(0, 0, 0, 0.22);
-        border: 1px solid rgba(242, 241, 236, 0.14);
-        border-radius: 16px;
-        padding: 16px 18px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-      }
-
-      .queue-hero-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 8px;
-        padding: 8px 10px;
-        background: rgba(255, 255, 255, 0.07);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 10px;
-        cursor: pointer;
-        transition: background 140ms ease, transform 140ms ease;
-      }
-
-      .queue-hero-row:hover {
-        background: rgba(255, 255, 255, 0.15);
-        transform: translateX(2px);
-      }
-
-      .hero-queue-tag {
-        font-size: 9px;
-        font-weight: 800;
-        letter-spacing: 0.05em;
-        background: rgba(242, 241, 236, 0.18);
-        color: #F2F1EC;
-        padding: 2px 5px;
-        border-radius: 4px;
-        text-transform: uppercase;
-        white-space: nowrap;
-      }
-
-      .hero-score-pill {
-        font-size: 10px;
-        font-weight: 800;
-        background: #F2F1EC;
-        color: #23241F;
-        padding: 2px 6px;
-        border-radius: 5px;
-      }
-
-      .btn-drift-action {
-        background: #F2F1EC;
-        color: #23241F;
-        border-radius: 12px;
-        height: 44px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        font-size: 13.5px;
-        font-weight: 700;
-        cursor: pointer;
-        border: none;
-        transition: background 180ms ease, transform 180ms ease;
-      }
-
-      .btn-drift-action:hover {
-        background: #FFFFFF;
-        transform: translateY(-1px);
+        margin-top: 10px;
+        line-height: 1.5;
       }
 
       /* Stacked Bar Chart */
       .stacked-chart-area {
         display: flex;
         align-items: flex-end;
-        gap: 6px;
-        height: 140px;
-        margin-top: 10px;
+        gap: 5px;
+        height: 150px;
+        margin-top: 16px;
       }
 
       .stacked-bar-col {
@@ -963,14 +927,14 @@ export class PtMainView extends LitElement {
 
       .stacked-segment {
         display: block;
-        border-radius: 4px;
+        border-radius: 5px;
         transition: height 240ms ease;
       }
 
       .stacked-labels-row {
         display: flex;
-        gap: 6px;
-        margin-top: 8px;
+        gap: 5px;
+        margin-top: 9px;
       }
 
       .stacked-label-item {
@@ -986,17 +950,16 @@ export class PtMainView extends LitElement {
       .kit-share-list {
         display: flex;
         flex-direction: column;
-        margin-top: 6px;
       }
 
       .kit-share-row {
         display: flex;
         align-items: center;
         gap: 11px;
-        padding: 10px 0;
+        padding: 12px 0;
         cursor: pointer;
         border-top: 1px solid #EDECE6;
-        transition: opacity 180ms ease-out;
+        transition: opacity 200ms ease-out;
       }
 
       .kit-share-row:first-child {
@@ -1007,7 +970,7 @@ export class PtMainView extends LitElement {
         height: 4px;
         border-radius: 3px;
         background: #EDECE6;
-        margin-top: 5px;
+        margin-top: 6px;
         overflow: hidden;
       }
 
@@ -1015,7 +978,7 @@ export class PtMainView extends LitElement {
         display: block;
         height: 100%;
         border-radius: 3px;
-        transition: width 300ms cubic-bezier(0.16, 1, 0.3, 1);
+        transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
       }
 
       /* Heatmap & Milestones */
@@ -1024,15 +987,13 @@ export class PtMainView extends LitElement {
         grid-template-rows: repeat(7, 1fr);
         grid-auto-flow: column;
         gap: 3px;
-        margin-top: 10px;
+        margin-top: 14px;
         overflow-x: auto;
         padding-bottom: 4px;
       }
 
       .heat-cell {
         aspect-ratio: 1;
-        min-width: 14px;
-        min-height: 14px;
         border-radius: 3px;
         position: relative;
         transition: transform 120ms ease;
@@ -1040,15 +1001,15 @@ export class PtMainView extends LitElement {
 
       .heat-cell svg {
         position: absolute;
-        inset: 12%;
-        width: 76%;
-        height: 76%;
+        inset: 13%;
+        width: auto;
+        height: auto;
       }
 
       .heat-months-row {
         display: flex;
         justify-content: space-between;
-        margin-top: 8px;
+        margin-top: 10px;
         font-size: 10px;
         color: #A3A297;
         letter-spacing: 0.06em;
@@ -1057,10 +1018,10 @@ export class PtMainView extends LitElement {
       .ms-preview-banner {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-top: 16px;
+        gap: 13px;
+        margin-top: 18px;
         border-top: 1px solid #EDECE6;
-        padding-top: 14px;
+        padding-top: 16px;
       }
 
       .ms-badge-icon-box {
@@ -1076,18 +1037,18 @@ export class PtMainView extends LitElement {
       .ms-legend-wrap {
         display: flex;
         flex-wrap: wrap;
-        gap: 7px;
-        margin-top: 12px;
+        gap: 8px;
+        margin-top: 11px;
       }
 
       .ms-legend-pill {
         display: inline-flex;
         align-items: center;
-        gap: 7px;
+        gap: 8px;
         border-radius: 999px;
-        padding: 4px 11px 4px 5px;
+        padding: 5px 12px 5px 6px;
         cursor: pointer;
-        font-size: 11px;
+        font-size: 11.5px;
         font-weight: 700;
         transition: transform 140ms ease, background 140ms ease;
         user-select: none;
@@ -1098,9 +1059,9 @@ export class PtMainView extends LitElement {
       }
 
       .ms-legend-icon-mini {
-        width: 20px;
-        height: 20px;
-        border-radius: 6px;
+        width: 22px;
+        height: 22px;
+        border-radius: 7px;
         display: flex;
         align-items: center;
         justify-content: center;
@@ -1110,17 +1071,17 @@ export class PtMainView extends LitElement {
       /* Pace & Weekday Cards */
       .pace-svg-box {
         width: 100%;
-        height: 80px;
-        margin-top: 8px;
+        height: 90px;
+        margin-top: 10px;
         overflow: visible;
       }
 
       .dow-bars-box {
         display: flex;
         align-items: flex-end;
-        gap: 7px;
-        height: 86px;
-        margin-top: 10px;
+        gap: 8px;
+        height: 96px;
+        margin-top: 14px;
       }
 
       .dow-col {
@@ -1128,14 +1089,14 @@ export class PtMainView extends LitElement {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 6px;
+        gap: 7px;
         height: 100%;
         justify-content: flex-end;
       }
 
       .dow-bar-fill {
         width: 100%;
-        border-radius: 4px;
+        border-radius: 5px;
         transition: height 240ms ease;
       }
 
@@ -1143,8 +1104,8 @@ export class PtMainView extends LitElement {
       .records-2x2-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 14px 12px;
-        margin-top: 10px;
+        gap: 16px 14px;
+        margin-top: 16px;
       }
 
       .record-k-tag {
@@ -1155,7 +1116,7 @@ export class PtMainView extends LitElement {
         text-transform: uppercase;
         display: flex;
         align-items: center;
-        gap: 5px;
+        gap: 6px;
       }
 
       .record-pill-new {
@@ -1169,25 +1130,25 @@ export class PtMainView extends LitElement {
       }
 
       .record-v-val {
-        font-size: 20px;
+        font-size: 22px;
         font-weight: 700;
         letter-spacing: -0.03em;
-        margin-top: 4px;
+        margin-top: 5px;
         color: #23241F;
       }
 
       .record-sub-text {
-        font-size: 11px;
+        font-size: 11.5px;
         color: #767668;
-        margin-top: 2px;
+        margin-top: 3px;
       }
 
       .records-fresh-footer {
         display: flex;
         gap: 9px;
-        margin-top: 14px;
+        margin-top: 16px;
         border-top: 1px solid #EDECE6;
-        padding-top: 12px;
+        padding-top: 14px;
       }
 
       .records-accent-bar {
@@ -1200,7 +1161,7 @@ export class PtMainView extends LitElement {
       /* 24h Rhythm Curve */
       .rhythm-svg-wrap {
         position: relative;
-        margin-top: 12px;
+        margin-top: 14px;
         width: 100%;
       }
 
@@ -1221,7 +1182,7 @@ export class PtMainView extends LitElement {
         margin: -4px 0 0 -4px;
         border-radius: 50%;
         background: #4F6353;
-        opacity: 0.3;
+        opacity: 0.28;
         animation: halo 5.4s ease-out infinite;
       }
 
@@ -1229,18 +1190,18 @@ export class PtMainView extends LitElement {
       .themes-cloud {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-top: 10px;
+        gap: 9px;
+        margin-top: 16px;
         align-items: baseline;
       }
 
       .theme-pill {
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 8px;
         border: 1px solid #E4E3DC;
         border-radius: 999px;
-        padding: 6px 13px;
+        padding: 8px 14px;
         background: #FAFAF7;
       }
 
@@ -1259,53 +1220,36 @@ export class PtMainView extends LitElement {
           max-width: 100%;
         }
 
-        .live-start-bar {
-          flex-direction: column;
-          align-items: stretch;
-          padding: 14px 14px 12px;
+        .next-choice-bento {
+          padding: 16px 14px;
           border-radius: 18px;
-          gap: 10px;
-          min-width: 0;
-          max-width: 100%;
+          gap: 14px;
         }
 
-        .live-start-bar.running {
-          flex-direction: row;
-          align-items: center;
-          justify-content: space-between;
-        }
-
-        .live-start-actions {
+        .bento-stat-row {
           flex-direction: column;
-          align-items: stretch;
-          width: 100%;
-          gap: 8px;
-          order: -1;
+          align-items: flex-start;
+          gap: 12px;
         }
 
-        .btn-start-primary {
-          width: 100%;
+        .bento-big-num {
+          font-size: 50px;
+        }
+
+        .bento-inst-name {
+          font-size: 22px;
+        }
+
+        .btn-bento-start {
+          min-width: 100%;
           height: 48px;
-          justify-content: center;
-          font-size: 14.5px;
+          font-size: 14px;
         }
 
-        .quick-log-toggle-btn {
+        .btn-bento-past-log {
           width: 100%;
           justify-content: center;
-          height: 40px;
-        }
-
-        .start-chips-group {
-          justify-content: center;
-          gap: 6px;
-          width: 100%;
-        }
-
-        .inst-chip {
-          padding: 7px 11px;
-          font-size: 11.5px;
-          border-radius: 10px;
+          height: 44px;
         }
 
         .bench-cards-grid {
@@ -1349,25 +1293,15 @@ export class PtMainView extends LitElement {
         }
 
         .one-away-item {
-          padding: 12px 14px;
+          padding: 14px;
         }
 
         .one-away-big {
-          font-size: 20px;
-          min-width: 44px;
+          font-size: 24px;
         }
 
         .stacked-chart-area {
-          height: 118px;
-        }
-
-        .drift-card {
-          padding: 18px 16px;
-          border-radius: 18px;
-        }
-
-        .drift-big-num {
-          font-size: 64px;
+          height: 120px;
         }
 
         .pace-svg-box {
@@ -1375,11 +1309,11 @@ export class PtMainView extends LitElement {
         }
 
         .dow-bars-box {
-          height: 70px;
+          height: 75px;
         }
 
         .rhythm-svg-wrap svg {
-          height: 86px !important;
+          height: 90px !important;
         }
       }
     `,
@@ -1472,27 +1406,12 @@ export class PtMainView extends LitElement {
     };
   }
 
-  private renderReasonIcon(icon?: string) {
-    if (!icon) return '';
-    switch (icon) {
-      case 'bolt':
-        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>`;
-      case 'brain':
-        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"></path><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"></path><path d="M12 5v13"></path></svg>`;
-      case 'scale':
-        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"></path><path d="M7 21h10"></path><path d="M12 3v18"></path><path d="M3 7h18"></path></svg>`;
-      case 'sparkles':
-        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"></path></svg>`;
-      default:
-        return html`<svg viewBox="0 0 24 24" style="width: 11px; height: 11px;" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>`;
-    }
-  }
-
   render() {
     const stats: BenchDataCalculations = calculateBenchStats(this.sessions, this.instruments, {
       range: this.range,
       mutedInstruments: this.mutedInstruments,
       now: new Date(this.now),
+      selectedInstrumentId: this.selectedRetargetId,
     });
 
     const isRunning = !!this.activeSession;
@@ -1508,67 +1427,31 @@ export class PtMainView extends LitElement {
     const elapsedDisplay = `${mm}:${ss}`;
 
     const activeMs = stats.milestones.find((m) => m.id === this.activeMsId);
-    const msCaptionTitle = activeMs ? activeMs.title : `${stats.milestones.filter(m => m.done && m.when > 0).length} milestones stamped on the calendar above`;
+    const msCaptionTitle = activeMs
+      ? activeMs.title
+      : `${stats.milestones.filter((m) => m.done && m.when > 0).length} milestones sit on the calendar above`;
     const msCaptionDetail = activeMs
       ? activeMs.done
         ? `${activeMs.detail}${activeMs.dateLabel ? ` · ${activeMs.dateLabel}` : ''}`
         : `${activeMs.detail} · ${activeMs.pctLabel} of the way`
-      : 'Hover or tap any marked calendar day or milestone pill below to view details.';
+      : 'Hover a marked day, or any icon here, to see what it was for.';
     const msCaptionIcon = activeMs ? activeMs.icon : BENCH_ICONS.star;
     const msCaptionBg = activeMs ? (activeMs.done ? activeMs.accent : '#E7E6DF') : '#E7E6DF';
     const msCaptionStroke = activeMs ? (activeMs.done ? '#FAFAF7' : '#B0AFA4') : '#B0AFA4';
 
     return html`
       <div class="bench-wrap">
-
-        <!-- Live Start Bar -->
-        <div class="live-start-bar ${isRunning ? 'running' : ''}">
-          ${!isRunning
-            ? html`
-                <div class="start-chips-group">
-                  ${stats.recommendation.rankedQueue.map(
-                    (item) => html`
-                      <div
-                        class="inst-chip"
-                        @click=${() => this.handleStart(item.instrumentId)}
-                        title="${item.name} (#${item.rank} rank, ${item.score} urgency score) - ${item.reason}"
-                      >
-                        <span class="inst-dot" style="background: ${item.color};"></span>
-                        <span>${item.name}</span>
-                        <span style="font-size: 10.5px; color: #767668; margin-left: 2px;">
-                          ${item.retentionPct}%
-                        </span>
-                      </div>
-                    `
-                  )}
-                </div>
-
-                <div class="live-start-actions">
-                  <button
-                    class="btn-start-primary"
-                    @click=${() => this.handleStart(stats.pick.id)}
-                  >
-                    <span>Start</span>
-                    <span>${stats.pick.name}</span>
-                  </button>
-
-                  <button
-                    class="quick-log-toggle-btn"
-                    @click=${() => (this.quickLogOpen = !this.quickLogOpen)}
-                    title="Quick log past practice"
-                  >
-                    <span>${this.quickLogOpen ? '✕ Close log' : '+ Quick past log'}</span>
-                  </button>
-                </div>
-              `
-            : html`
-                <div class="running-indicator-wrap">
+        <!-- Live Running Session Bar (When Active) -->
+        ${isRunning
+          ? html`
+              <div class="running-session-bar">
+                <div class="running-info-left">
                   <span class="running-pulse-dot"></span>
                   <div class="running-inst-name">${activeInst?.name || 'Instrument'}</div>
                   <div class="running-timer-num">${elapsedDisplay}</div>
                 </div>
 
-                <div class="running-actions">
+                <div class="running-actions-right">
                   <button class="btn-discard-link" @click=${this.handleDiscard}>
                     Discard
                   </button>
@@ -1576,15 +1459,122 @@ export class PtMainView extends LitElement {
                     End session
                   </button>
                 </div>
-              `}
-        </div>
+              </div>
+            `
+          : html`
+              <!-- Consolidated Next Choice Bento (When Idle) -->
+              <div class="next-choice-bento">
+                <!-- Top Retarget Chips Row -->
+                <div class="retarget-chips-header">
+                  <div class="retarget-chips-list">
+                    ${stats.nextUp.chips.map(
+                      (c) => html`
+                        <div
+                          class="retarget-chip ${c.isSelected ? 'selected' : ''}"
+                          @click=${() => (this.selectedRetargetId = c.id)}
+                          title="${c.name} (${c.pct})"
+                        >
+                          <span class="retarget-chip-dot" style="background: ${c.color};"></span>
+                          <span class="retarget-chip-name">${c.name}</span>
+                          <span class="retarget-chip-pct ${c.isSelected ? 'selected' : ''}">${c.pct}</span>
+                        </div>
+                      `
+                    )}
+                  </div>
+                  <div class="retarget-header-hint">TAP TO RETARGET</div>
+                </div>
+
+                <div class="bento-divider"></div>
+
+                <!-- Main Two-Column Split -->
+                <div class="bento-two-col">
+                  <!-- Left Column: Selected Instrument Details & Start -->
+                  <div class="bento-col-left">
+                    <div class="bento-stat-row">
+                      <div class="bento-stat-left">
+                        <div class="bento-num-line">
+                          <div class="bento-big-num">${stats.nextUp.num}</div>
+                          <div class="bento-unit-label">${stats.nextUp.unit}</div>
+                        </div>
+                        <div class="bento-name-rank-line">
+                          <div class="bento-inst-name">${stats.nextUp.name}</div>
+                          <div class="bento-rank-pill">${stats.nextUp.rankLabel}</div>
+                        </div>
+                        <div class="bento-sub-line">${stats.nextUp.line}</div>
+                      </div>
+
+                      <div class="bento-ticks-track">
+                        ${stats.nextUp.ticks.map(
+                          (t) => html`
+                            <div class="bento-tick" style="height: ${t.h}; background: ${t.bg};"></div>
+                          `
+                        )}
+                      </div>
+                    </div>
+
+                    <div class="bento-reason-italic">${stats.nextUp.reason}</div>
+
+                    <div class="bento-actions-row">
+                      <div
+                        class="btn-bento-start"
+                        @click=${() => {
+                          const idToStart = stats.nextUp.selectedId;
+                          this.selectedRetargetId = null;
+                          this.handleStart(idToStart);
+                        }}
+                      >
+                        <span>${stats.nextUp.cta}</span>
+                        <svg viewBox="0 0 24 24" style="width: 16px; height: 16px;" fill="none" stroke="#23241F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M4.5 12h14M13 6.5l5.5 5.5L13 17.5"></path>
+                        </svg>
+                      </div>
+
+                      <div
+                        class="btn-bento-past-log"
+                        @click=${() => (this.quickLogOpen = !this.quickLogOpen)}
+                      >
+                        ${this.quickLogOpen ? '✕ Close log' : '+ Past log'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Right Column: Priority Queue -->
+                  <div class="bento-col-right">
+                    <div class="bento-queue-header">
+                      <div class="queue-title-tag">PRIORITY QUEUE</div>
+                      <div class="queue-subtitle-tag">coldest first</div>
+                    </div>
+
+                    <div class="bento-queue-list">
+                      ${stats.nextUp.queue.map(
+                        (q) => html`
+                          <div
+                            class="queue-row-item ${q.isSelected ? 'selected' : ''}"
+                            @click=${() => (this.selectedRetargetId = q.id)}
+                            title="${q.name} (${q.flag}) - ${q.reason || q.ago}"
+                          >
+                            <span class="queue-rank-num">${q.rank}</span>
+                            <span class="queue-dot" style="background: ${q.color};"></span>
+                            <span class="queue-inst-name">${q.name}</span>
+                            <span class="queue-flag-badge" style="background: ${q.flagBg};">${q.flag}</span>
+                            <span class="queue-spacer"></span>
+                            <span class="queue-ago-text">${q.ago}</span>
+                            <span class="queue-pct-pill">${q.pct}</span>
+                          </div>
+                        `
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            `}
 
         <!-- Quick Past Logging Drawer -->
         ${this.quickLogOpen
           ? html`
               <div class="quick-log-panel">
                 <div class="quick-log-header">
-                  <span class="quick-log-title">1-Tap Past Practice Log for ${stats.pick.name}</span>
+                  <span class="quick-log-title">1-Tap Past Practice Log for ${stats.nextUp.name}</span>
                   <button
                     class="btn-discard-link"
                     @click=${() => {
@@ -1604,7 +1594,7 @@ export class PtMainView extends LitElement {
                         <span
                           class="quick-chip"
                           @click=${() => {
-                            this.handleQuickPastLog(stats.pick.id, m, 1);
+                            this.handleQuickPastLog(stats.nextUp.selectedId, m, 1);
                             this.quickLogOpen = false;
                           }}
                         >
@@ -1620,7 +1610,7 @@ export class PtMainView extends LitElement {
                         <span
                           class="quick-chip"
                           @click=${() => {
-                            this.handleQuickPastLog(stats.pick.id, m, 2);
+                            this.handleQuickPastLog(stats.nextUp.selectedId, m, 2);
                             this.quickLogOpen = false;
                           }}
                         >
@@ -1686,136 +1676,10 @@ export class PtMainView extends LitElement {
 
         <!-- 4-Column Card Grid -->
         <div class="bench-cards-grid">
-          <!-- 1. Play This Next Hero Bento Card (Span 4) -->
-          <div class="drift-card card-span-4">
-            <div class="drift-top-row">
-              <span class="drift-tag">SCIENTIFIC PLAY NEXT</span>
-              <div style="display: flex; align-items: center; gap: 8px;">
-                ${stats.pick.reasonDetails
-                  ? html`
-                      <span class="reason-badge">
-                        ${this.renderReasonIcon(stats.pick.reasonDetails.icon)}
-                        ${stats.pick.reasonDetails.badge}
-                      </span>
-                    `
-                  : ''}
-                <button
-                  class="reason-info-btn ${this.showReasonWhy ? 'active' : ''}"
-                  @click=${(e: Event) => {
-                    e.stopPropagation();
-                    this.showReasonWhy = !this.showReasonWhy;
-                  }}
-                  title="Why was this recommended?"
-                >?</button>
-              </div>
-            </div>
-
-            <div class="drift-hero-grid">
-              <!-- Left Column: Spotlight Instrument & Action -->
-              <div class="drift-hero-left">
-                <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 12px;">
-                  <div>
-                    <div class="drift-num-row">
-                      <div class="drift-big-num">${stats.drift.num}</div>
-                      <div class="drift-unit-label">${stats.drift.unit}</div>
-                    </div>
-                  </div>
-                  <div style="width: 140px;">
-                    <div class="drift-ticks-row">
-                      ${stats.drift.ticks.map(
-                        (t) => html`
-                          <span class="drift-tick" style="height: ${t.h}; background: ${t.bg};"></span>
-                        `
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                    <div class="drift-inst-name">${stats.drift.name}</div>
-                    ${stats.recommendation.topPick
-                      ? html`
-                          <span class="rank-badge" style="background: rgba(255, 255, 255, 0.14); color: #F2F1EC;">
-                            #${stats.recommendation.topPick.rank} Priority
-                          </span>
-                        `
-                      : ''}
-                  </div>
-                  <div class="reason-headline-text">
-                    ${stats.pick.reasonDetails ? stats.pick.reasonDetails.headline : stats.pick.reason}
-                  </div>
-                </div>
-
-                ${this.showReasonWhy
-                  ? html`
-                      <div class="reason-why-drawer">
-                        <div style="font-weight: 700; font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: #F2F1EC; display: flex; justify-content: space-between;">
-                          <span>Algorithm Rationale</span>
-                          <span>Urgency Score: ${stats.recommendation.topPick?.score || 0}/100</span>
-                        </div>
-                        <div style="line-height: 1.4; color: rgba(242, 241, 236, 0.95);">
-                          ${stats.pick.reasonDetails?.explanation || stats.pick.reason}
-                        </div>
-                        <div style="border-top: 1px dashed rgba(242, 241, 236, 0.2); padding-top: 6px; margin-top: 2px;" class="why-metric-row">
-                          <span>Memory Retention: <strong>${stats.recommendation.topPick?.retentionPct || 0}%</strong></span>
-                          <span>Target Share: <strong>${stats.recommendation.topPick?.targetSharePct || 0}%</strong> (actual: ${stats.recommendation.topPick?.actualSharePct || 0}%)</span>
-                        </div>
-                      </div>
-                    `
-                  : ''}
-
-                <button class="btn-drift-action" @click=${() => this.handleStart(stats.drift.id)}>
-                  <span>Pick up ${stats.drift.name}</span>
-                  <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;" fill="none" stroke="#23241F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4.5 12h14M13 6.5l5.5 5.5L13 17.5"></path>
-                  </svg>
-                </button>
-              </div>
-
-              <!-- Right Column: Priority Queue Spotlight -->
-              <div class="drift-hero-right">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                  <span style="font-size: 9.5px; font-weight: 800; letter-spacing: 0.1em; opacity: 0.75; text-transform: uppercase;">
-                    Scientific Priority Queue
-                  </span>
-                  <span style="font-size: 11px; opacity: 0.65; font-weight: 700;">
-                    ${stats.recommendation.rankedQueue.length} Active
-                  </span>
-                </div>
-
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                  ${stats.recommendation.rankedQueue.slice(0, 4).map(
-                    (q, idx) => html`
-                      <div
-                        class="queue-hero-row"
-                        @click=${() => this.handleStart(q.instrumentId)}
-                        title="${q.reasonDetails ? q.reasonDetails.explanation : q.reason}"
-                      >
-                        <div style="display: flex; align-items: center; gap: 8px; min-width: 0;">
-                          <span style="font-weight: 800; font-size: 11px; opacity: 0.6; min-width: 16px;">#${idx + 1}</span>
-                          <span style="width: 7px; height: 7px; border-radius: 50%; background: ${q.color}; flex-shrink: 0;"></span>
-                          <span style="font-weight: 700; font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #F2F1EC;">${q.name}</span>
-                          ${q.reasonDetails
-                            ? html`<span class="hero-queue-tag">${q.reasonDetails.badge}</span>`
-                            : ''}
-                        </div>
-                        <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
-                          <span style="font-size: 11px; opacity: 0.7;">${q.retentionPct}%</span>
-                          <span class="hero-score-pill">${q.score}</span>
-                        </div>
-                      </div>
-                    `
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 2. Day Streak Card (Span 2) -->
+          <!-- 1. Day Streak Card (Span 2) -->
           <div class="bench-card card-span-2">
             <div class="bench-card-header">
-              <span class="card-label">Day Streak</span>
+              <span class="card-label">DAY STREAK</span>
               <span class="card-sub-label">best ${stats.bestStreak}d</span>
             </div>
             <div class="streak-val-row">
@@ -1842,7 +1706,7 @@ export class PtMainView extends LitElement {
           <!-- 2. Lifetime Banked Hours & Ring (Span 2) -->
           <div class="bench-card card-span-2">
             <div class="bench-card-header">
-              <span class="card-label">Every hour you have logged</span>
+              <span class="card-label">EVERY HOUR YOU HAVE LOGGED</span>
               <span class="card-sub-label">${stats.nextMile} goal</span>
             </div>
             <div class="banked-card-body">
@@ -1883,8 +1747,8 @@ export class PtMainView extends LitElement {
           <!-- 3. One Session Away (Span 4) -->
           <div class="bench-card card-span-4">
             <div class="bench-card-header">
-              <span class="card-label">One Session Away</span>
-              <span class="card-sub-label">shortest first · tap to start</span>
+              <span class="card-label">ONE SESSION AWAY</span>
+              <span class="card-sub-label">shortest first · tap to start it</span>
             </div>
             <div class="one-away-grid">
               ${stats.oneAway.map(
@@ -1945,7 +1809,7 @@ export class PtMainView extends LitElement {
           <!-- 5. 26-Week Calendar Heatmap with Milestone Pins (Span 4) -->
           <div class="bench-card card-span-4">
             <div class="bench-card-header">
-              <span class="card-label">Every Day on Record · Milestones Marked Where They Landed</span>
+              <span class="card-label">EVERY DAY ON RECORD · MILESTONES MARKED WHERE THEY LANDED</span>
               <span class="card-sub-label">${stats.heatSince}</span>
             </div>
             <div class="heatmap-grid">
@@ -2000,7 +1864,7 @@ export class PtMainView extends LitElement {
 
             <!-- Milestone Legend Pills -->
             <div class="bench-card-header" style="margin-top: 18px; margin-bottom: 6px;">
-              <span class="card-label">Milestones · Greyed Out Means Not Yet</span>
+              <span class="card-label">MILESTONES · GREYED OUT MEANS NOT YET</span>
               <span class="card-sub-label">${stats.msCount}</span>
             </div>
             <div class="ms-legend-wrap">
@@ -2018,14 +1882,14 @@ export class PtMainView extends LitElement {
                     }}
                   >
                     <span class="ms-legend-icon-mini" style="background: ${m.done ? m.accent : '#E7E6DF'};">
-                      <svg viewBox="0 0 24 24" style="width: 12px; height: 12px;" fill="none" stroke="${m.done ? '#FAFAF7' : '#B0AFA4'}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                      <svg viewBox="0 0 24 24" style="width: 13px; height: 13px;" fill="none" stroke="${m.done ? '#FAFAF7' : '#B0AFA4'}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
                         <path d="${m.icon}"></path>
                       </svg>
                     </span>
-                    <span style="font-size: 11.5px; color: ${m.done ? '#4A4945' : '#A3A297'};">
+                    <span style="font-size: 11.5px; font-weight: 700; color: ${m.done ? '#4A4945' : '#A3A297'};">
                       ${m.title}
                     </span>
-                    <span style="font-size: 10px; color: #A3A297;">
+                    <span style="font-size: 10.5px; color: #A3A297;">
                       ${m.done ? m.dateLabel || 'cleared' : m.pctLabel}
                     </span>
                   </div>
@@ -2037,12 +1901,12 @@ export class PtMainView extends LitElement {
           <!-- 6. This Week vs Your Median (Span 2) -->
           <div class="bench-card card-span-2">
             <div class="bench-card-header">
-              <span class="card-label">This Week vs Your Median</span>
+              <span class="card-label">THIS WEEK VS YOUR MEDIAN</span>
               <span style="font-size: 11.5px; font-weight: 700; color: ${stats.paceColor};">
                 ${stats.paceDelta}
               </span>
             </div>
-            <div style="display: flex; align-items: baseline; gap: 9px; margin-top: 4px;">
+            <div style="display: flex; align-items: baseline; gap: 9px; margin-top: 8px;">
               <div style="font-size: 34px; font-weight: 700; letter-spacing: -0.03em;">
                 ${stats.weekTotal}
               </div>
@@ -2071,7 +1935,7 @@ export class PtMainView extends LitElement {
           <!-- 7. Your Week, Averaged (Weekday Fingerprint) (Span 2) -->
           <div class="bench-card card-span-2">
             <div class="bench-card-header">
-              <span class="card-label">Your Week, Averaged</span>
+              <span class="card-label">YOUR WEEK, AVERAGED</span>
               <span class="card-sub-label">fingerprint</span>
             </div>
             <div class="dow-bars-box">
@@ -2095,7 +1959,7 @@ export class PtMainView extends LitElement {
           <!-- 8. Records Shelf (Span 2) -->
           <div class="bench-card card-span-2">
             <div class="bench-card-header">
-              <span class="card-label">Records</span>
+              <span class="card-label">RECORDS</span>
               <span class="card-sub-label">${stats.freshCount}</span>
             </div>
             <div class="records-2x2-grid">
@@ -2123,7 +1987,7 @@ export class PtMainView extends LitElement {
           <!-- 9. How Long You Actually Play (Session Length Histogram) (Span 2) -->
           <div class="bench-card card-span-2">
             <div class="bench-card-header">
-              <span class="card-label">How Long You Actually Play</span>
+              <span class="card-label">HOW LONG YOU ACTUALLY PLAY</span>
               <span class="card-sub-label">distribution</span>
             </div>
             <div class="dow-bars-box">
@@ -2142,12 +2006,10 @@ export class PtMainView extends LitElement {
             </div>
           </div>
 
-
-
-          <!-- 11. Kit Share Breakdown & Interactive Mute (Span 2) -->
-          <div class="bench-card card-span-2">
+          <!-- 10. Kit Share Breakdown & Interactive Mute (Span 4) -->
+          <div class="bench-card card-span-4" style="padding: 20px 20px 8px;">
             <div class="bench-card-header">
-              <span class="card-label">Kit Share · Tap to Mute One</span>
+              <span class="card-label">KIT SHARE · TAP TO MUTE ONE</span>
               <span class="card-sub-label">${this.range}</span>
             </div>
             <div class="kit-share-list">
@@ -2159,7 +2021,7 @@ export class PtMainView extends LitElement {
                     @click=${() => this.toggleMute(r.id)}
                     title="${r.isMuted ? 'Unmute' : 'Mute'} ${r.name} in chart"
                   >
-                    <span class="inst-dot" style="background: ${r.color};"></span>
+                    <span class="retarget-chip-dot" style="background: ${r.color};"></span>
                     <div style="flex: 1; min-width: 0;">
                       <div style="display: flex; justify-content: space-between; gap: 8px;">
                         <span style="font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -2193,10 +2055,10 @@ export class PtMainView extends LitElement {
             </div>
           </div>
 
-          <!-- 12. Your Day, By The Hour (24h Rhythm Curve) (Span 4) -->
-          <div class="bench-card card-span-4" style="overflow: hidden;">
+          <!-- 11. Your Day, By The Hour (24h Rhythm Curve) (Span 4) -->
+          <div class="bench-card card-span-4" style="overflow: hidden; padding: 22px 22px 18px;">
             <div class="bench-card-header">
-              <span class="card-label">Your Day, By The Hour</span>
+              <span class="card-label">YOUR DAY, BY THE HOUR</span>
               <div style="font-size: 12px; color: #767668;">
                 <strong style="color: #23241F;">${stats.windowShare}</strong> of every minute falls between ${stats.windowLabel}
               </div>
@@ -2221,10 +2083,10 @@ export class PtMainView extends LitElement {
             </div>
           </div>
 
-          <!-- 13. From Your Notes (Themes) (Span 4) -->
+          <!-- 12. From Your Notes (Themes) (Span 4) -->
           <div class="bench-card card-span-4">
             <div class="bench-card-header">
-              <span class="card-label">From Your Notes · What You Have Been Working On</span>
+              <span class="card-label">FROM YOUR NOTES · WHAT YOU HAVE BEEN WORKING ON</span>
               <span class="card-sub-label">recent tags</span>
             </div>
             <div class="themes-cloud">

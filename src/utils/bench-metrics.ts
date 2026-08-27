@@ -12,6 +12,8 @@ import {
   NoteThemeItem,
   PracticeRecommendation,
   RecommendationReasonDetails,
+  InstrumentScoreBreakdown,
+  NextUpData,
 } from '../types';
 import { calculatePracticeRecommendations } from './recommendation-engine';
 
@@ -81,6 +83,7 @@ export interface BenchDataCalculations {
   drift: DriftMetric;
   pick: { id: string; name: string; color: string; reason: string; reasonDetails?: RecommendationReasonDetails };
   recommendation: PracticeRecommendation;
+  nextUp: NextUpData;
   heatMarked: HeatmapCell[];
   heatMonths: { label: string }[];
   heatSince: string;
@@ -144,6 +147,7 @@ export function calculateBenchStats(
     range?: RangeScope;
     mutedInstruments?: Record<string, boolean>;
     now?: Date;
+    selectedInstrumentId?: string | null;
   } = {}
 ): BenchDataCalculations {
   const now = options.now || new Date();
@@ -326,6 +330,132 @@ export function calculateBenchStats(
     days: pickDays >= 999 ? 99 : pickDays,
   };
   const coldestList = [coldest];
+
+  // ── Next Up & Priority Queue Calculation for Consolidated Next Choice Bento
+  const fallbackQueue: InstrumentScoreBreakdown[] = activeInsts.map((instItem, idx) => {
+    const mine = parsedSessions.filter((s) => s.instrumentId === instItem.id && s.t >= cutoff42);
+    const mins = mine.reduce((a, s) => a + s.min, 0);
+    const last = parsedSessions.filter((s) => s.instrumentId === instItem.id).slice(-1)[0];
+    const days = last ? Math.round((today.getTime() - dayStart(last.t).getTime()) / 86400000) : 99;
+    const actualPct = totalRecent > 0 ? Math.round((mins / totalRecent) * 100) : 0;
+    return {
+      instrumentId: instItem.id,
+      name: instItem.name,
+      color: instItem.color,
+      tier: instItem.tier,
+      rank: idx + 1,
+      score: Math.max(10, 100 - idx * 20),
+      retentionPct: days >= 99 ? 0 : Math.max(10, Math.round(100 * Math.pow(0.5, days / 7))),
+      targetSharePct: instItem.tier === 'primary' ? 35 : 15,
+      actualSharePct: actualPct,
+      shareDeficitPct: (instItem.tier === 'primary' ? 35 : 15) - actualPct,
+      daysSince: days,
+      step: 1,
+      status: (days >= 99 ? 'new' : days >= 6 ? 'cold' : days >= 3 ? 'cool' : 'warm') as any,
+      reason: days >= 99 ? 'Never logged once. It is sitting in your kit doing nothing.' : `Last played ${agoText(days)}. Due another pass before it goes cold.`,
+      isPracticedToday: days === 0,
+    };
+  });
+
+  const rankedQueue: InstrumentScoreBreakdown[] = recommendation.rankedQueue.length > 0
+    ? recommendation.rankedQueue
+    : fallbackQueue;
+
+  const selectedInstId = options.selectedInstrumentId;
+  const defaultFallbackItem: InstrumentScoreBreakdown = {
+    instrumentId: activeInsts[0]?.id || 'guitar',
+    name: activeInsts[0]?.name || 'Guitar',
+    color: activeInsts[0]?.color || '#6B7F6E',
+    tier: 'primary',
+    rank: 1,
+    score: 100,
+    retentionPct: 0,
+    targetSharePct: 35,
+    actualSharePct: 0,
+    shareDeficitPct: 35,
+    daysSince: 99,
+    step: 1,
+    status: 'new',
+    reason: 'Start a session to build your practice streak.',
+    isPracticedToday: false,
+  };
+
+  const selectedItem: InstrumentScoreBreakdown =
+    (selectedInstId ? rankedQueue.find((k) => k.instrumentId === selectedInstId) : null) ||
+    topPick ||
+    rankedQueue[0] ||
+    defaultFallbackItem;
+
+  const selectedRank = rankedQueue.findIndex((k) => k.instrumentId === selectedItem.instrumentId) + 1 || 1;
+  const selDays = selectedItem.daysSince >= 999 ? 99 : selectedItem.daysSince;
+  const selPct = `${selectedItem.actualSharePct || 0}%`;
+
+  const selPlayedDates = new Set(
+    parsedSessions
+      .filter((s) => s.instrumentId === selectedItem.instrumentId)
+      .map((s) => Math.round((today.getTime() - dayStart(s.t).getTime()) / 86400000))
+  );
+
+  const nextUpTicks = Array.from({ length: 14 }, (_, i) => {
+    const dAgo = 13 - i;
+    const hit = selPlayedDates.has(dAgo);
+    return {
+      h: hit ? '34px' : '3px',
+      bg: hit ? 'rgba(242,241,236,0.88)' : 'rgba(242,241,236,0.20)',
+    };
+  });
+
+  const reasonFor = (k: { daysSince: number; actualSharePct: number }) =>
+    k.daysSince >= 99
+      ? 'Never logged once. It is sitting in your kit doing nothing.'
+      : k.daysSince >= 6
+      ? `Untouched for ${k.daysSince} days — your longest neglect in the kit right now.`
+      : k.actualSharePct < 12
+      ? `Only ${k.actualSharePct}% of your last six weeks. It is quietly slipping.`
+      : `Last played ${agoText(k.daysSince)}. Due another pass before it goes cold.`;
+
+  const nextUpReason =
+    selectedRank === 1
+      ? selectedItem.reasonDetails?.explanation || selectedItem.reason || reasonFor(selectedItem)
+      : `You picked this one. ${rankedQueue[0]?.name || 'Top pick'} is still first in the queue.`;
+
+  const nextUp: NextUpData = {
+    selectedId: selectedItem.instrumentId,
+    name: selectedItem.name,
+    color: selectedItem.color,
+    num: selDays >= 99 ? '—' : String(selDays),
+    unit: selDays >= 99 ? 'not yet logged' : selDays === 1 ? 'day since' : 'days since',
+    rankLabel: `#${selectedRank} priority`,
+    rank: selectedRank,
+    line: selDays >= 99 ? 'Never logged once.' : `Last played ${agoText(selDays)} · ${selPct} of your last six weeks`,
+    reason: nextUpReason,
+    reasonDetails: selectedItem.reasonDetails,
+    cta: `Start ${selectedItem.name}`,
+    ticks: nextUpTicks,
+    chips: rankedQueue.map((k) => ({
+      id: k.instrumentId,
+      name: k.name,
+      color: k.color,
+      pct: `${k.actualSharePct || 0}%`,
+      isSelected: k.instrumentId === selectedItem.instrumentId,
+    })),
+    queue: rankedQueue.map((k, idx) => {
+      const d = k.daysSince >= 999 ? 99 : k.daysSince;
+      const flagText = k.daysSince >= 99 ? 'NEVER' : k.daysSince >= 6 ? 'RUST' : k.daysSince <= 1 ? 'FRESH' : 'STEADY';
+      return {
+        id: k.instrumentId,
+        rank: `#${idx + 1}`,
+        name: k.name,
+        color: k.color,
+        pct: `${k.actualSharePct || 0}%`,
+        ago: agoText(d),
+        flag: flagText,
+        flagBg: d >= 6 ? 'rgba(192,138,106,0.30)' : 'rgba(242,241,236,0.13)',
+        isSelected: k.instrumentId === selectedItem.instrumentId,
+        reason: k.reasonDetails?.explanation || k.reason,
+      };
+    }),
+  };
 
   // Weekly Median pace
   const thisMon = mondayOf(today);
@@ -1022,6 +1152,7 @@ export function calculateBenchStats(
     drift,
     pick,
     recommendation,
+    nextUp,
     heatMarked: heatCells,
     heatMonths,
     heatSince,

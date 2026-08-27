@@ -73,7 +73,7 @@ export class PtApp extends LitElement {
       }
 
       .brand-title {
-        font-size: 20px;
+        font-size: 19px;
         font-weight: 700;
         letter-spacing: -0.03em;
         color: #23241F;
@@ -103,7 +103,7 @@ export class PtApp extends LitElement {
       }
 
       .nav-tab-btn {
-        padding: 8px 16px;
+        padding: 9px 16px;
         border-radius: 10px;
         font-size: 12.5px;
         font-weight: 700;
