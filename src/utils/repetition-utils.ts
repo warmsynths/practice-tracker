@@ -1,7 +1,9 @@
-import { Instrument, Session, InstrumentRepetitionState, InstrumentHeatStatus } from '../types';
+import { Instrument, Session, InstrumentRepetitionState, InstrumentHeatStatus, InstrumentTier } from '../types';
 import { addDays, dateKey, startOfDay } from './date-utils';
 
-export const REPETITION_INTERVALS = [1, 3, 7, 14, 30] as const;
+export const PRIMARY_REPETITION_INTERVALS = [1, 3, 7, 14, 30] as const;
+export const SECONDARY_REPETITION_INTERVALS = [3, 7, 14, 21, 30] as const;
+export const REPETITION_INTERVALS = PRIMARY_REPETITION_INTERVALS;
 export const MAX_REPETITION_STEPS = 5;
 
 /**
@@ -15,15 +17,19 @@ export function diffCalendarDays(target: Date, base: Date): number {
 }
 
 /**
- * Computes the 1-3-7-14-30 spaced repetition schedule & heat state for a single instrument
- * derived deterministically from its session history.
+ * Computes the spaced repetition schedule & heat state for a single instrument
+ * derived deterministically from its session history and tier.
+ * Primary: 1-3-7-14-30 days
+ * Secondary: 3-7-14-21-30 days
  */
 export function calculateInstrumentRepetition(
   instrumentId: string,
   sessions: Session[],
-  targetDate: Date = new Date()
+  targetDate: Date = new Date(),
+  tier: InstrumentTier = 'primary'
 ): InstrumentRepetitionState {
   const today = startOfDay(targetDate);
+  const intervals = tier === 'secondary' ? SECONDARY_REPETITION_INTERVALS : PRIMARY_REPETITION_INTERVALS;
 
   // Filter valid, non-deleted sessions for this instrument
   const instSessions = sessions
@@ -35,7 +41,7 @@ export function calculateInstrumentRepetition(
       instrumentId,
       step: 0,
       maxSteps: MAX_REPETITION_STEPS,
-      intervalDays: REPETITION_INTERVALS[0],
+      intervalDays: intervals[0],
       lastPracticedAt: null,
       nextDueAt: null,
       daysRemaining: 0,
@@ -68,9 +74,9 @@ export function calculateInstrumentRepetition(
     const sessionDay = practiceDays[i];
 
     if (i === 0) {
-      // First session: initializes Step 1 with a 1-day interval
+      // First session: initializes Step 1 with base interval
       currentStep = 1;
-      const interval = REPETITION_INTERVALS[0]; // 1 day
+      const interval = intervals[0];
       targetDueDate = addDays(sessionDay, interval);
     } else {
       // Check if session occurred on or before scheduled due date
@@ -78,21 +84,21 @@ export function calculateInstrumentRepetition(
 
       if (isOntime) {
         if (currentStep >= MAX_REPETITION_STEPS) {
-          // Completed full 30-day cycle! Loop back to Step 1
+          // Completed full cycle! Loop back to Step 1
           cycleCount++;
           currentStep = 1;
-          const interval = REPETITION_INTERVALS[0]; // 1 day
+          const interval = intervals[0];
           targetDueDate = addDays(sessionDay, interval);
         } else {
           // Advance to next step
           currentStep++;
-          const interval = REPETITION_INTERVALS[currentStep - 1];
+          const interval = intervals[currentStep - 1];
           targetDueDate = addDays(sessionDay, interval);
         }
       } else {
         // Missed milestone: lost heat, resets back to Step 1
         currentStep = 1;
-        const interval = REPETITION_INTERVALS[0]; // 1 day
+        const interval = intervals[0];
         targetDueDate = addDays(sessionDay, interval);
       }
     }
@@ -100,7 +106,7 @@ export function calculateInstrumentRepetition(
 
   const lastPracticedIso = instSessions[instSessions.length - 1].start;
   const nextDueIso = targetDueDate ? targetDueDate.toISOString() : null;
-  const currentInterval = REPETITION_INTERVALS[Math.max(0, Math.min(currentStep - 1, MAX_REPETITION_STEPS - 1))];
+  const currentInterval = intervals[Math.max(0, Math.min(currentStep - 1, MAX_REPETITION_STEPS - 1))];
 
   const daysRemaining = targetDueDate ? diffCalendarDays(targetDueDate, today) : 0;
   const isOverdue = daysRemaining < 0;
@@ -159,7 +165,7 @@ export function calculateAllInstrumentsRepetition(
 ): Map<string, InstrumentRepetitionState> {
   const map = new Map<string, InstrumentRepetitionState>();
   for (const inst of instruments) {
-    map.set(inst.id, calculateInstrumentRepetition(inst.id, sessions, targetDate));
+    map.set(inst.id, calculateInstrumentRepetition(inst.id, sessions, targetDate, inst.tier));
   }
   return map;
 }

@@ -71,8 +71,8 @@ describe('Bench Metrics Calculations', () => {
       {
         id: 's2',
         instrumentId: 'piano',
-        start: addDays(today, -2).toISOString(),
-        end: new Date(addDays(today, -2).getTime() + 30 * 60000).toISOString(),
+        start: today.toISOString(),
+        end: new Date(today.getTime() + 30 * 60000).toISOString(),
         duration: 30,
       },
       // Bass is untouched
@@ -127,14 +127,14 @@ describe('Bench Metrics Calculations', () => {
       {
         id: 's2',
         instrumentId: 'piano',
-        start: addDays(today, -3).toISOString(),
-        end: new Date(addDays(today, -3).getTime() + 45 * 60000).toISOString(),
+        start: today.toISOString(),
+        end: new Date(today.getTime() + 45 * 60000).toISOString(),
         duration: 45,
       },
       // Bass has 0 sessions
     ];
 
-    // Default nextUp pick (Bass because it was never played)
+    // Default nextUp pick (Bass because it was never played and primaries were played today)
     const statsDefault = calculateBenchStats(sessions, TEST_INSTRUMENTS, { now });
     expect(statsDefault.nextUp).toBeDefined();
     expect(statsDefault.nextUp.selectedId).toBe('bass');

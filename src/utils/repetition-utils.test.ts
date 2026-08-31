@@ -179,6 +179,34 @@ describe('Spaced Repetition & Heat Logic (repetition-utils)', () => {
     expect(map.get('piano')?.status).toBe('new');
   });
 
+  it('uses relaxed [3, 7, 14, 21, 30] schedule for secondary tier instruments', () => {
+    const s1 = makeSession('drumming', 0); // 2026-08-01
+
+    // Step 1: starts with 3-day interval instead of 1-day
+    const st1 = calculateInstrumentRepetition('drumming', [s1], baseDate, 'secondary');
+    expect(st1.step).toBe(1);
+    expect(st1.intervalDays).toBe(3);
+    expect(st1.daysRemaining).toBe(3);
+    expect(st1.isDueToday).toBe(false);
+
+    // On Day 1 (1 day later), it should NOT be due today (2 days remaining)
+    const stDay1 = calculateInstrumentRepetition('drumming', [s1], addDays(baseDate, 1), 'secondary');
+    expect(stDay1.daysRemaining).toBe(2);
+    expect(stDay1.isDueToday).toBe(false);
+
+    // On Day 3 (3 days later), it is due today
+    const stDay3 = calculateInstrumentRepetition('drumming', [s1], addDays(baseDate, 3), 'secondary');
+    expect(stDay3.daysRemaining).toBe(0);
+    expect(stDay3.isDueToday).toBe(true);
+
+    // Step 2: practiced on Day 3 -> interval becomes 7 days
+    const s2 = makeSession('drumming', 3);
+    const st2 = calculateInstrumentRepetition('drumming', [s1, s2], addDays(baseDate, 3), 'secondary');
+    expect(st2.step).toBe(2);
+    expect(st2.intervalDays).toBe(7);
+    expect(st2.daysRemaining).toBe(7);
+  });
+
   it('returns proper heat colors for all status states', () => {
     expect(getHeatColor('due')).toBe('#E05D44');
     expect(getHeatColor('overdue')).toBe('#D94838');

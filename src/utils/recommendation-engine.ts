@@ -100,8 +100,8 @@ export function calculatePracticeRecommendations(
     const actualShare = actualShareMap.get(inst.id) || 0;
     const shareDeficit = targetShare - actualShare;
 
-    // Spaced repetition state
-    const repState = calculateInstrumentRepetition(inst.id, validSessions, targetDate);
+    // Spaced repetition state (respects Primary vs Secondary tier schedule)
+    const repState = calculateInstrumentRepetition(inst.id, validSessions, targetDate, inst.tier);
 
     // Days since last practice
     let daysSince = 999;
@@ -116,28 +116,36 @@ export function calculatePracticeRecommendations(
     let retentionPct = 0;
     if (repState.lastPracticedAt && daysSince >= 0) {
       const stepInterval = Math.max(1, repState.intervalDays);
-      // Priority rank slightly tightens half-life so top instruments prompt review sooner when neglected
-      const halfLife = stepInterval * (1 + 0.05 * Math.max(0, 5 - rank));
+      // Primary tier caps retention half-life (~8-10 days) so prolonged silence prompts review;
+      // Secondary tier allows full leisurely intervals
+      const maxHalfLife = inst.tier === 'primary' ? 8 + Math.max(0, 3 - rank) : 45;
+      const halfLife = Math.min(maxHalfLife, stepInterval * (1 + 0.05 * Math.max(0, 5 - rank)));
       retentionPct = Math.min(100, Math.max(0, Math.exp((-Math.LN2 * daysSince) / halfLife) * 100));
     }
 
     const retentionDeficitScore = 100 - retentionPct;
     const shareDeficitScore = Math.max(0, shareDeficit * 100);
-    const priorityWeightScore = (1 / Math.pow(rank, 0.5)) * 100;
+    const tierScale = inst.tier === 'primary' ? 1.0 : 0.6;
+    const priorityWeightScore = tierScale * (1 / Math.pow(rank, 0.7)) * 100;
 
-    // Composite urgency score formula
+    // Composite urgency score formula: 35% Retention, 30% Kit Share Deficit, 35% Priority Weight
     let rawScore =
-      0.45 * retentionDeficitScore +
-      0.35 * shareDeficitScore +
-      0.20 * priorityWeightScore;
+      0.35 * retentionDeficitScore +
+      0.30 * shareDeficitScore +
+      0.35 * priorityWeightScore;
 
-    // Overdue or Unpracticed bonus
+    const isPrimary = inst.tier === 'primary';
+
+    // Overdue or Unpracticed bonus (scaled by tier/priority)
     if (!repState.lastPracticedAt) {
-      rawScore += 25; // Never logged boost to prioritize breaking the ice
+      rawScore += isPrimary ? 25 : 12; // Baseline boost
     } else if (repState.isOverdue) {
-      rawScore += 15 + Math.min(25, Math.abs(repState.daysRemaining) * 5);
+      const baseOverdue = isPrimary ? 20 : 8;
+      const perDay = isPrimary ? 5 : 2;
+      const maxExtra = isPrimary ? 25 : 10;
+      rawScore += baseOverdue + Math.min(maxExtra, Math.abs(repState.daysRemaining) * perDay);
     } else if (repState.isDueToday) {
-      rawScore += 10;
+      rawScore += isPrimary ? 15 : 6;
     }
 
     // Interleaving practice penalty: if practiced today, cool down to promote switching skills
