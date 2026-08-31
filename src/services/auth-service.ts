@@ -17,6 +17,24 @@ function getEnvSupabaseAnonKey(): string | undefined {
   }
 }
 
+export function getRedirectUrl(customRedirectTo?: string): string {
+  if (customRedirectTo && customRedirectTo.trim()) {
+    return customRedirectTo.trim();
+  }
+  try {
+    const envUrl = (import.meta as any).env?.VITE_REDIRECT_URL || (import.meta as any).env?.VITE_SITE_URL;
+    if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
+      return envUrl.trim();
+    }
+  } catch {
+    // ignore
+  }
+  if (typeof window !== 'undefined' && window.location) {
+    return window.location.origin + window.location.pathname;
+  }
+  return 'http://localhost:5173';
+}
+
 export type AuthStateListener = (state: AuthState) => void;
 
 export class AuthService {
@@ -119,14 +137,18 @@ export class AuthService {
     return this.currentAccessToken;
   }
 
-  public async signUp(email: string, password: string): Promise<{ success: boolean; message?: string; user?: User }> {
+  public async signUp(email: string, password: string, redirectTo?: string): Promise<{ success: boolean; message?: string; user?: User }> {
     if (!this.client) {
       return { success: false, message: 'Supabase credentials are not configured.' };
     }
     try {
+      const targetRedirect = getRedirectUrl(redirectTo);
       const { data, error } = await this.client.auth.signUp({
         email: email.trim(),
         password,
+        options: {
+          emailRedirectTo: targetRedirect,
+        },
       });
       if (error) {
         return { success: false, message: error.message };
@@ -159,13 +181,17 @@ export class AuthService {
     }
   }
 
-  public async signInWithOtp(email: string): Promise<{ success: boolean; message?: string }> {
+  public async signInWithOtp(email: string, redirectTo?: string): Promise<{ success: boolean; message?: string }> {
     if (!this.client) {
       return { success: false, message: 'Supabase credentials are not configured.' };
     }
     try {
+      const targetRedirect = getRedirectUrl(redirectTo);
       const { error } = await this.client.auth.signInWithOtp({
         email: email.trim(),
+        options: {
+          emailRedirectTo: targetRedirect,
+        },
       });
       if (error) {
         return { success: false, message: error.message };
@@ -177,15 +203,16 @@ export class AuthService {
     }
   }
 
-  public async signInWithOAuth(provider: 'google' = 'google'): Promise<{ success: boolean; message?: string }> {
+  public async signInWithOAuth(provider: 'google' = 'google', redirectTo?: string): Promise<{ success: boolean; message?: string }> {
     if (!this.client) {
       return { success: false, message: 'Supabase credentials are not configured.' };
     }
     try {
+      const targetRedirect = getRedirectUrl(redirectTo);
       const { error } = await this.client.auth.signInWithOAuth({
         provider,
         options: {
-          redirectTo: window.location.origin,
+          redirectTo: targetRedirect,
         },
       });
       if (error) {
@@ -198,18 +225,35 @@ export class AuthService {
     }
   }
 
-  public async resetPasswordForEmail(email: string): Promise<{ success: boolean; message?: string }> {
+  public async resetPasswordForEmail(email: string, redirectTo?: string): Promise<{ success: boolean; message?: string }> {
     if (!this.client) {
       return { success: false, message: 'Supabase credentials are not configured.' };
     }
     try {
+      const targetRedirect = getRedirectUrl(redirectTo);
       const { error } = await this.client.auth.resetPasswordForEmail(email.trim(), {
-        redirectTo: window.location.origin,
+        redirectTo: targetRedirect,
       });
       if (error) {
         return { success: false, message: error.message };
       }
       return { success: true, message: 'Password reset link sent to your email.' };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      return { success: false, message: msg };
+    }
+  }
+
+  public async updateUserPassword(password: string): Promise<{ success: boolean; message?: string }> {
+    if (!this.client) {
+      return { success: false, message: 'Supabase credentials are not configured.' };
+    }
+    try {
+      const { error } = await this.client.auth.updateUser({ password });
+      if (error) {
+        return { success: false, message: error.message };
+      }
+      return { success: true, message: 'Password updated successfully.' };
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       return { success: false, message: msg };

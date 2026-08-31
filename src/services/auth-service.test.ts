@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { AuthService } from './auth-service';
+import { AuthService, getRedirectUrl } from './auth-service';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -33,4 +33,74 @@ describe('AuthService', () => {
 
     unsubscribe();
   });
+
+  describe('getRedirectUrl', () => {
+    it('returns custom redirect URL if provided', () => {
+      expect(getRedirectUrl('https://custom.app/callback')).toBe('https://custom.app/callback');
+    });
+
+    it('returns VITE_REDIRECT_URL when set in environment', () => {
+      const url = getRedirectUrl();
+      const expectedEnv = (import.meta as any).env?.VITE_REDIRECT_URL || (import.meta as any).env?.VITE_SITE_URL;
+      if (expectedEnv) {
+        expect(url).toBe(expectedEnv);
+      }
+    });
+
+    it('uses window.location.origin + window.location.pathname when no env var is configured', () => {
+      const originalWindow = globalThis.window;
+      globalThis.window = {
+        location: {
+          origin: 'https://example.com',
+          pathname: '/practice-tracker/',
+        },
+      } as any;
+
+      try {
+        const url = getRedirectUrl();
+        const envUrl = (import.meta as any).env?.VITE_REDIRECT_URL || (import.meta as any).env?.VITE_SITE_URL;
+        if (envUrl) {
+          expect(url).toBe(envUrl);
+        } else {
+          expect(url).toBe('https://example.com/practice-tracker/');
+        }
+      } finally {
+        globalThis.window = originalWindow;
+      }
+    });
+  });
+
+  describe('resetPasswordForEmail', () => {
+    it('calls client.auth.resetPasswordForEmail with computed redirect URL', async () => {
+      const mockReset = vi.fn().mockResolvedValue({ error: null });
+      (authService as any).client = {
+        auth: {
+          resetPasswordForEmail: mockReset,
+        },
+      };
+
+      const res = await authService.resetPasswordForEmail('user@example.com');
+      expect(res.success).toBe(true);
+      expect(mockReset).toHaveBeenCalledWith('user@example.com', {
+        redirectTo: getRedirectUrl(),
+      });
+    });
+
+    it('allows overriding redirect URL explicitly', async () => {
+      const mockReset = vi.fn().mockResolvedValue({ error: null });
+      (authService as any).client = {
+        auth: {
+          resetPasswordForEmail: mockReset,
+        },
+      };
+
+      const customUrl = 'https://warmsynths.github.io/practice-tracker/';
+      const res = await authService.resetPasswordForEmail('user@example.com', customUrl);
+      expect(res.success).toBe(true);
+      expect(mockReset).toHaveBeenCalledWith('user@example.com', {
+        redirectTo: customUrl,
+      });
+    });
+  });
 });
+
