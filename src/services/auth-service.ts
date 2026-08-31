@@ -43,6 +43,7 @@ export class AuthService {
   private currentAccessToken: string | null = null;
   private isLoading = true;
   private listeners: Set<AuthStateListener> = new Set();
+  private recoveryListeners: Set<() => void> = new Set();
 
   constructor(supabaseUrl?: string, supabaseAnonKey?: string) {
     const url = supabaseUrl !== undefined ? supabaseUrl : getEnvSupabaseUrl();
@@ -65,10 +66,13 @@ export class AuthService {
           this.notify();
         });
 
-        this.client.auth.onAuthStateChange((_event, session) => {
+        this.client.auth.onAuthStateChange((event, session) => {
           this.handleSession(session);
           this.isLoading = false;
           this.notify();
+          if (event === 'PASSWORD_RECOVERY') {
+            this.notifyPasswordRecovery();
+          }
         });
       } catch (err) {
         console.error('Failed to initialize Supabase Auth client:', err);
@@ -95,6 +99,30 @@ export class AuthService {
   private notify() {
     const state = this.getAuthState();
     this.listeners.forEach((listener) => listener(state));
+  }
+
+  private notifyPasswordRecovery() {
+    this.recoveryListeners.forEach((listener) => {
+      try {
+        listener();
+      } catch (err) {
+        console.error('Error in password recovery listener:', err);
+      }
+    });
+  }
+
+  public onPasswordRecovery(listener: () => void): () => void {
+    this.recoveryListeners.add(listener);
+    return () => {
+      this.recoveryListeners.delete(listener);
+    };
+  }
+
+  public hasRecoveryInUrl(): boolean {
+    if (typeof window === 'undefined' || !window.location) return false;
+    const hash = window.location.hash || '';
+    const search = window.location.search || '';
+    return hash.includes('type=recovery') || search.includes('type=recovery');
   }
 
   public subscribe(listener: AuthStateListener): () => void {

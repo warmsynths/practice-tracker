@@ -102,5 +102,78 @@ describe('AuthService', () => {
       });
     });
   });
+
+  describe('updateUserPassword', () => {
+    it('calls client.auth.updateUser with new password', async () => {
+      const mockUpdate = vi.fn().mockResolvedValue({ data: { user: {} }, error: null });
+      (authService as any).client = {
+        auth: {
+          updateUser: mockUpdate,
+        },
+      };
+
+      const res = await authService.updateUserPassword('new-secret-pass');
+      expect(res.success).toBe(true);
+      expect(mockUpdate).toHaveBeenCalledWith({ password: 'new-secret-pass' });
+    });
+
+    it('returns error when update fails', async () => {
+      const mockUpdate = vi.fn().mockResolvedValue({ data: null, error: { message: 'Password is too weak' } });
+      (authService as any).client = {
+        auth: {
+          updateUser: mockUpdate,
+        },
+      };
+
+      const res = await authService.updateUserPassword('123');
+      expect(res.success).toBe(false);
+      expect(res.message).toBe('Password is too weak');
+    });
+  });
+
+  describe('password recovery listeners and url detection', () => {
+    it('notifies recovery subscribers when PASSWORD_RECOVERY event is triggered', () => {
+      const recoveryFn = vi.fn();
+      const unsub = authService.onPasswordRecovery(recoveryFn);
+
+      (authService as any).notifyPasswordRecovery();
+      expect(recoveryFn).toHaveBeenCalledTimes(1);
+
+      unsub();
+      (authService as any).notifyPasswordRecovery();
+      expect(recoveryFn).toHaveBeenCalledTimes(1);
+    });
+
+    it('detects recovery in url correctly', () => {
+      const originalWindow = globalThis.window;
+      try {
+        globalThis.window = {
+          location: {
+            hash: '#access_token=xyz&type=recovery',
+            search: '',
+          },
+        } as any;
+        expect(authService.hasRecoveryInUrl()).toBe(true);
+
+        globalThis.window = {
+          location: {
+            hash: '#access_token=xyz',
+            search: '?type=recovery',
+          },
+        } as any;
+        expect(authService.hasRecoveryInUrl()).toBe(true);
+
+        globalThis.window = {
+          location: {
+            hash: '',
+            search: '',
+          },
+        } as any;
+        expect(authService.hasRecoveryInUrl()).toBe(false);
+      } finally {
+        globalThis.window = originalWindow;
+      }
+    });
+  });
 });
 

@@ -5,7 +5,7 @@ import { authService } from '../../services/auth-service';
 import { playClickSound, playEndSound } from '../../utils/audio-utils';
 import { practiceStore } from '../../store/practice-store';
 
-export type AuthTab = 'signin' | 'create' | 'magic';
+export type AuthTab = 'signin' | 'create' | 'magic' | 'reset-password';
 
 @customElement('pt-auth-modal')
 export class PtAuthModal extends LitElement {
@@ -454,6 +454,39 @@ export class PtAuthModal extends LitElement {
     this.errorMessage = null;
     this.successMessage = null;
 
+    if (this.activeTab === 'reset-password') {
+      if (!this.password || this.password.length < 6) {
+        this.errorMessage = 'Password must be at least 6 characters long.';
+        return;
+      }
+      if (this.password !== this.confirmPassword) {
+        this.errorMessage = 'Passwords do not match.';
+        return;
+      }
+
+      this.isLoading = true;
+      try {
+        const res = await authService.updateUserPassword(this.password);
+        if (res.success) {
+          playEndSound(practiceStore.getSettings().soundEnabled);
+          this.successMessage = 'Password updated successfully!';
+          this.password = '';
+          this.confirmPassword = '';
+          if (typeof window !== 'undefined' && window.history) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+          }
+          setTimeout(() => {
+            this.close();
+          }, 1500);
+        } else {
+          this.errorMessage = res.message || 'Failed to update password.';
+        }
+      } finally {
+        this.isLoading = false;
+      }
+      return;
+    }
+
     const emailTrimmed = this.email.trim();
     if (!emailTrimmed || !emailTrimmed.includes('@')) {
       this.errorMessage = 'Please enter a valid email address.';
@@ -536,14 +569,20 @@ export class PtAuthModal extends LitElement {
   render() {
     if (!this.open) return html``;
 
+    const isReset = this.activeTab === 'reset-password';
     const ctaText =
       this.isLoading
         ? 'Please wait...'
+        : isReset
+        ? 'Update password'
         : this.activeTab === 'signin'
         ? 'Sign in'
         : this.activeTab === 'create'
         ? 'Create account'
         : 'Send magic link';
+
+    const titleMain = isReset ? 'Set new password' : 'Musician account';
+    const subtitle = isReset ? 'Enter a new password for your account' : 'so your hours follow you';
 
     return html`
       <div
@@ -555,8 +594,8 @@ export class PtAuthModal extends LitElement {
           <!-- Header -->
           <div class="modal-header">
             <div>
-              <div class="title-main">Musician account</div>
-              <div class="subtitle-italic">so your hours follow you</div>
+              <div class="title-main">${titleMain}</div>
+              <div class="subtitle-italic">${subtitle}</div>
             </div>
             <button
               type="button"
@@ -568,30 +607,34 @@ export class PtAuthModal extends LitElement {
             </button>
           </div>
 
-          <!-- 3-Tab Segmented Track -->
-          <div class="segmented-tabs-track">
-            <button
-              type="button"
-              class="tab-choice-btn ${this.activeTab === 'signin' ? 'active' : ''}"
-              @click=${() => this.setTab('signin')}
-            >
-              Sign in
-            </button>
-            <button
-              type="button"
-              class="tab-choice-btn ${this.activeTab === 'create' ? 'active' : ''}"
-              @click=${() => this.setTab('create')}
-            >
-              Create account
-            </button>
-            <button
-              type="button"
-              class="tab-choice-btn ${this.activeTab === 'magic' ? 'active' : ''}"
-              @click=${() => this.setTab('magic')}
-            >
-              Magic link
-            </button>
-          </div>
+          <!-- 3-Tab Segmented Track (hidden in reset-password mode) -->
+          ${!isReset
+            ? html`
+                <div class="segmented-tabs-track">
+                  <button
+                    type="button"
+                    class="tab-choice-btn ${this.activeTab === 'signin' ? 'active' : ''}"
+                    @click=${() => this.setTab('signin')}
+                  >
+                    Sign in
+                  </button>
+                  <button
+                    type="button"
+                    class="tab-choice-btn ${this.activeTab === 'create' ? 'active' : ''}"
+                    @click=${() => this.setTab('create')}
+                  >
+                    Create account
+                  </button>
+                  <button
+                    type="button"
+                    class="tab-choice-btn ${this.activeTab === 'magic' ? 'active' : ''}"
+                    @click=${() => this.setTab('magic')}
+                  >
+                    Magic link
+                  </button>
+                </div>
+              `
+            : ''}
 
           ${this.errorMessage
             ? html`<div class="alert-banner alert-error">${this.errorMessage}</div>`
@@ -603,89 +646,122 @@ export class PtAuthModal extends LitElement {
           <!-- Form Body -->
           <form @submit=${this.handleSubmit}>
             <div class="fields-stack">
-              <!-- Email Address -->
-              <div class="field-block">
-                <div class="field-label">EMAIL ADDRESS</div>
-                <input
-                  type="email"
-                  class="text-input"
-                  placeholder="you@example.com"
-                  required
-                  autocomplete="email"
-                  .value=${this.email}
-                  @input=${(e: Event) => (this.email = (e.target as HTMLInputElement).value)}
-                />
-              </div>
-
-              <!-- Tab: Magic Link helper -->
-              ${this.activeTab === 'magic'
-                ? html`
-                    <div class="helper-copy">
-                      We'll email you a passwordless one-time login link. Click the link on any device to log in instantly.
-                    </div>
-                  `
-                : ''}
-
-              <!-- Tab: Sign In Password -->
-              ${this.activeTab === 'signin'
+              <!-- Reset Password Fields -->
+              ${isReset
                 ? html`
                     <div class="field-block">
-                      <div class="label-row">
-                        <div class="field-label">PASSWORD</div>
-                        <button
-                          type="button"
-                          class="forgot-action"
-                          @click=${this.handleForgotPassword}
-                        >
-                          Forgot?
-                        </button>
-                      </div>
+                      <div class="field-label">NEW PASSWORD</div>
                       <input
                         type="password"
                         class="text-input pw"
                         required
-                        autocomplete="current-password"
-                        .value=${this.password}
-                        @input=${(e: Event) => (this.password = (e.target as HTMLInputElement).value)}
-                      />
-                    </div>
-                  `
-                : ''}
-
-              <!-- Tab: Create Account Passwords -->
-              ${this.activeTab === 'create'
-                ? html`
-                    <div class="field-block">
-                      <div class="field-label">PASSWORD</div>
-                      <input
-                        type="password"
-                        class="text-input pw"
-                        required
+                        minlength="6"
+                        placeholder="At least 6 characters"
                         autocomplete="new-password"
                         .value=${this.password}
                         @input=${(e: Event) => (this.password = (e.target as HTMLInputElement).value)}
                       />
                     </div>
                     <div class="field-block">
-                      <div class="field-label">CONFIRM PASSWORD</div>
+                      <div class="field-label">CONFIRM NEW PASSWORD</div>
                       <input
                         type="password"
                         class="text-input pw"
                         required
+                        minlength="6"
+                        placeholder="Repeat new password"
                         autocomplete="new-password"
                         .value=${this.confirmPassword}
                         @input=${(e: Event) =>
                           (this.confirmPassword = (e.target as HTMLInputElement).value)}
                       />
                     </div>
-                    <div class="adopt-callout">
-                      <span class="adopt-dot"></span>
-                      <div class="adopt-text">
-                        Your practice history from this browser will be automatically adopted into your new account.
-                      </div>
-                    </div>
                   `
-                : ''}
+                : html`
+                    <!-- Email Address -->
+                    <div class="field-block">
+                      <div class="field-label">EMAIL ADDRESS</div>
+                      <input
+                        type="email"
+                        class="text-input"
+                        placeholder="you@example.com"
+                        required
+                        autocomplete="email"
+                        .value=${this.email}
+                        @input=${(e: Event) => (this.email = (e.target as HTMLInputElement).value)}
+                      />
+                    </div>
+
+                    <!-- Tab: Magic Link helper -->
+                    ${this.activeTab === 'magic'
+                      ? html`
+                          <div class="helper-copy">
+                            We'll email you a passwordless one-time login link. Click the link on any device to log in instantly.
+                          </div>
+                        `
+                      : ''}
+
+                    <!-- Tab: Sign In Password -->
+                    ${this.activeTab === 'signin'
+                      ? html`
+                          <div class="field-block">
+                            <div class="label-row">
+                              <div class="field-label">PASSWORD</div>
+                              <button
+                                type="button"
+                                class="forgot-action"
+                                @click=${this.handleForgotPassword}
+                              >
+                                Forgot?
+                              </button>
+                            </div>
+                            <input
+                              type="password"
+                              class="text-input pw"
+                              required
+                              autocomplete="current-password"
+                              .value=${this.password}
+                              @input=${(e: Event) => (this.password = (e.target as HTMLInputElement).value)}
+                            />
+                          </div>
+                        `
+                      : ''}
+
+                    <!-- Tab: Create Account Passwords -->
+                    ${this.activeTab === 'create'
+                      ? html`
+                          <div class="field-block">
+                            <div class="field-label">PASSWORD</div>
+                            <input
+                              type="password"
+                              class="text-input pw"
+                              required
+                              autocomplete="new-password"
+                              .value=${this.password}
+                              @input=${(e: Event) => (this.password = (e.target as HTMLInputElement).value)}
+                            />
+                          </div>
+                          <div class="field-block">
+                            <div class="field-label">CONFIRM PASSWORD</div>
+                            <input
+                              type="password"
+                              class="text-input pw"
+                              required
+                              autocomplete="new-password"
+                              .value=${this.confirmPassword}
+                              @input=${(e: Event) =>
+                                (this.confirmPassword = (e.target as HTMLInputElement).value)}
+                            />
+                          </div>
+                          <div class="adopt-callout">
+                            <span class="adopt-dot"></span>
+                            <div class="adopt-text">
+                              Your practice history from this browser will be automatically adopted into your new account.
+                            </div>
+                          </div>
+                        `
+                      : ''}
+                  `}
             </div>
 
             <!-- Actions Stack -->
@@ -698,7 +774,19 @@ export class PtAuthModal extends LitElement {
                 ${ctaText}
               </button>
 
-              ${this.activeTab === 'signin'
+              ${isReset
+                ? html`
+                    <div class="switch-row">
+                      <button
+                        type="button"
+                        class="switch-action"
+                        @click=${() => this.setTab('signin')}
+                      >
+                        Back to sign in
+                      </button>
+                    </div>
+                  `
+                : this.activeTab === 'signin'
                 ? html`
                     <div class="or-divider">
                       <span class="or-line"></span>

@@ -387,9 +387,10 @@ export class PtSettingsView extends LitElement {
     this.magicSentEmail = email;
   }
 
-  private handleOpenAuthModal() {
+  private handleOpenAuthModal(tab?: 'signin' | 'create' | 'magic' | 'reset-password') {
     this.dispatchEvent(
       new CustomEvent('open-auth-modal', {
+        detail: { tab: tab || 'signin' },
         bubbles: true,
         composed: true,
       })
@@ -513,9 +514,14 @@ export class PtSettingsView extends LitElement {
                       </div>
                     </div>
                   </div>
-                  <button class="btn-outline-signout" @click=${this.handleSignOut}>
-                    Sign out
-                  </button>
+                  <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <button class="btn-outline-signout" @click=${() => this.handleOpenAuthModal('reset-password')}>
+                      Change password
+                    </button>
+                    <button class="btn-outline-signout" @click=${this.handleSignOut}>
+                      Sign out
+                    </button>
+                  </div>
                 </div>
               </div>
             `

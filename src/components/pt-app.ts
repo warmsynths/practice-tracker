@@ -273,10 +273,11 @@ export class PtApp extends LitElement {
   @state() private editSessionModalOpen: boolean = false;
   @state() private sessionToEdit: Session | null = null;
   @state() private authModalOpen: boolean = false;
-  @state() private authInitialTab: 'signin' | 'create' | 'magic' = 'signin';
+  @state() private authInitialTab: 'signin' | 'create' | 'magic' | 'reset-password' = 'signin';
 
   private unsubscribeStore?: () => void;
   private unsubscribeAuth?: () => void;
+  private unsubscribeRecovery?: () => void;
   private timerInterval?: any;
 
   connectedCallback() {
@@ -291,6 +292,16 @@ export class PtApp extends LitElement {
       this.authState = state;
     });
 
+    this.unsubscribeRecovery = authService.onPasswordRecovery(() => {
+      this.authInitialTab = 'reset-password';
+      this.authModalOpen = true;
+    });
+
+    if (authService.hasRecoveryInUrl()) {
+      this.authInitialTab = 'reset-password';
+      this.authModalOpen = true;
+    }
+
     this.timerInterval = setInterval(() => {
       this.now = Date.now();
     }, 1000);
@@ -302,6 +313,7 @@ export class PtApp extends LitElement {
     super.disconnectedCallback();
     if (this.unsubscribeStore) this.unsubscribeStore();
     if (this.unsubscribeAuth) this.unsubscribeAuth();
+    if (this.unsubscribeRecovery) this.unsubscribeRecovery();
     if (this.timerInterval) clearInterval(this.timerInterval);
   }
 
@@ -386,7 +398,7 @@ export class PtApp extends LitElement {
     practiceStore.updateSettings(e.detail);
   }
 
-  private handleOpenAuthModal(e?: CustomEvent<{ tab?: 'signin' | 'create' | 'magic' }>) {
+  private handleOpenAuthModal(e?: CustomEvent<{ tab?: 'signin' | 'create' | 'magic' | 'reset-password' }>) {
     this.authInitialTab = e?.detail?.tab || 'signin';
     this.authModalOpen = true;
   }
