@@ -69,7 +69,14 @@ class PracticeStore {
   private instruments: Instrument[] = [];
   private sessions: Session[] = [];
   private activeSession: ActiveSession | null = null;
-  private settings: AppSettings = { soundEnabled: true, hapticsEnabled: true };
+  private settings: AppSettings = {
+    soundEnabled: true,
+    hapticsEnabled: true,
+    theme: 'plum',
+    celebrateGoal: true,
+    heroGlyphAnimated: true,
+    reduceMotion: false,
+  };
   private tombstones: Tombstone[] = [];
   private syncStatus: SyncStatus = 'local';
   private syncErrorMessage: string | null = null;

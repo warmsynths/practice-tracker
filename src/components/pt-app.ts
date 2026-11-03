@@ -5,14 +5,25 @@ import { practiceStore } from '../store/practice-store';
 import { authService } from '../services/auth-service';
 import { getBackgroundUrl } from '../services/background-service';
 import { commonStyles } from '../styles/shared-styles';
+import { applyThemeVars } from '../styles/theme';
+import { formatRelativeTime, weekToDateMinutes } from '../utils/date-utils';
 
-import './views/pt-main-view';
+import './views/pt-today-view';
 import './views/pt-log-view';
-import './views/pt-kit-view';
+import './views/pt-insights-view';
 import './views/pt-settings-view';
 import './modals/pt-manual-entry-modal';
 import './modals/pt-edit-session-modal';
 import './modals/pt-auth-modal';
+import './common/pt-recording-overlay';
+import './common/pt-celebration-overlay';
+
+const TABS: { id: TabType; label: string }[] = [
+  { id: 'today', label: 'Today' },
+  { id: 'log', label: 'Log' },
+  { id: 'insights', label: 'Insights' },
+  { id: 'settings', label: 'Settings' },
+];
 
 @customElement('pt-app')
 export class PtApp extends LitElement {
@@ -24,216 +35,185 @@ export class PtApp extends LitElement {
         width: 100%;
         min-height: 100vh;
         min-height: 100dvh;
-        background: #DEDDD7;
-        font-family: 'DM Sans', system-ui, -apple-system, sans-serif;
-        color: #23241F;
+        background: var(--bg, #2B1C33);
+        font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+        color: var(--ink, #F5E9DA);
         position: relative;
         overflow-x: hidden;
+        transition: background-color 300ms ease-out;
       }
 
       .app-page-wrap {
         min-height: 100vh;
         min-height: 100dvh;
-        background: #DEDDD7;
-        color: #23241F;
-        padding: 22px 16px 60px;
+        padding: 22px 28px 40px;
         display: flex;
         justify-content: center;
+        position: relative;
+        z-index: 1;
       }
 
-      @media (min-width: 768px) {
-        .app-page-wrap {
-          padding: 26px 24px 70px;
-        }
+      .app-page-wrap.narrow {
+        padding: 18px 14px 100px;
       }
 
       .app-layout-col {
         width: 100%;
-        max-width: 1080px;
+        max-width: 1120px;
         min-width: 0;
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 16px;
       }
 
-      /* Top Header Bar */
-      .top-navbar {
+      /* Top bar */
+      .top-bar {
         display: flex;
         align-items: center;
         justify-content: space-between;
         gap: 12px 20px;
-        padding: 0 6px;
         flex-wrap: wrap;
       }
 
-      .brand-date-box {
-        display: flex;
-        align-items: baseline;
-        gap: 12px;
+      .header-title {
+        font-family: 'Gabarito', sans-serif;
+        font-size: 21px;
+        font-weight: 900;
+        letter-spacing: -0.02em;
       }
 
-      .brand-title {
-        font-size: 19px;
-        font-weight: 700;
-        letter-spacing: -0.03em;
-        color: #23241F;
-      }
-
-      .date-italic-line {
-        font-family: 'Instrument Serif', serif;
-        font-style: italic;
-        font-size: 16px;
-        color: #767668;
-      }
-
-      .top-actions-box {
+      .top-actions {
         display: flex;
         align-items: center;
         gap: 10px;
-        flex-wrap: wrap;
       }
 
-      .tabs-pill-track {
+      .pill-nav {
         display: flex;
-        background: #E4E3DD;
-        border-radius: 14px;
+        background: var(--card);
+        border-radius: 999px;
         padding: 4px;
-        gap: 4px;
-        flex-wrap: wrap;
+        gap: 2px;
       }
 
-      .nav-tab-btn {
-        padding: 9px 16px;
-        border-radius: 10px;
-        font-size: 12.5px;
+      .pill-nav-btn {
+        padding: 8px 16px;
+        border-radius: 999px;
+        font-family: 'Gabarito', sans-serif;
+        font-size: 13px;
         font-weight: 700;
         cursor: pointer;
         border: none;
         background: transparent;
-        color: #767668;
-        transition: background-color 180ms ease-out, color 180ms ease-out, transform 120ms ease;
+        color: var(--muted);
+        transition: background-color 160ms ease-out, color 160ms ease-out;
         user-select: none;
       }
 
-      .nav-tab-btn.active {
-        background: #FBFBF9;
-        color: #23241F;
-        box-shadow: 0 2px 6px rgba(35, 36, 31, 0.05);
+      .pill-nav-btn.active {
+        background: var(--ink);
+        color: var(--bg);
       }
 
-      .nav-tab-btn:hover:not(.active) {
-        color: #23241F;
-      }
-
-      .sync-status-pill {
+      /* Sync pill */
+      .sync-pill {
         display: flex;
         align-items: center;
         gap: 7px;
-        background: #DFE9DE;
-        color: #4F6353;
+        background: var(--card);
+        color: var(--ink);
         border-radius: 999px;
-        padding: 7px 13px;
+        height: 36px;
+        padding: 0 14px;
+        font-family: 'Manrope', sans-serif;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 800;
         cursor: pointer;
         border: none;
         user-select: none;
-        transition: filter 150ms ease;
+        transition: filter 150ms ease-out;
+        position: relative;
       }
 
-      .sync-status-pill:hover {
-        filter: brightness(0.97);
+      .sync-pill:hover {
+        filter: brightness(1.08);
       }
 
       .sync-dot {
-        width: 6px;
-        height: 6px;
+        width: 8px;
+        height: 8px;
         border-radius: 50%;
-        background: #6B7F6E;
       }
 
-      .sync-dot.syncing {
-        background: #D4A340;
-        animation: softPulse 1.2s ease-in-out infinite;
-      }
+      .sync-dot.guest { background: var(--accent); }
+      .sync-dot.saving { background: #FFC2A8; animation: softPulse 1s ease-in-out infinite; }
+      .sync-dot.syncing { background: var(--chart); animation: softPulse 0.7s ease-in-out infinite; }
+      .sync-dot.synced { background: #9BD49B; }
 
-      .sync-dot.offline {
-        background: #A3A297;
-      }
-
-      /* Main Card Container */
-      .main-content-card {
-        background: #EDEDE9;
-        border-radius: 26px;
+      .sync-panel {
+        position: absolute;
+        top: 44px;
+        right: 0;
+        width: 300px;
+        background: var(--card);
+        border-radius: 20px;
         padding: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        min-height: calc(100vh - 120px);
+        box-shadow: 0 30px 60px -20px rgba(10, 5, 15, 0.7);
+        z-index: 40;
+        animation: popIn 200ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        text-align: left;
+      }
+
+      .sync-panel-title {
+        font-family: 'Gabarito', sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        margin-bottom: 6px;
+      }
+
+      .sync-panel-copy {
+        font-size: 12px;
+        color: var(--muted);
+        line-height: 1.4;
+        margin-bottom: 14px;
+      }
+
+      /* Bottom tab bar (mobile) */
+      .bottom-tab-bar {
+        position: fixed;
+        left: 12px;
+        right: 12px;
+        bottom: 14px;
+        height: 60px;
+        border-radius: 999px;
+        background: var(--card);
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        padding: 5px;
+        gap: 4px;
+        box-shadow: 0 10px 30px rgba(10, 5, 15, 0.5);
+        z-index: 20;
+      }
+
+      .bottom-tab-btn {
+        border: none;
+        border-radius: 999px;
+        background: transparent;
+        color: var(--muted);
+        font-family: 'Gabarito', sans-serif;
+        font-size: 12px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .bottom-tab-btn.active {
+        background: var(--ink);
+        color: var(--bg);
+      }
+
+      main {
+        display: block;
         min-width: 0;
-        max-width: 100%;
-      }
-
-      @media (min-width: 768px) {
-        .main-content-card {
-          padding: 26px;
-        }
-      }
-
-      /* Mobile Phone Mode (< 640px) */
-      @media (max-width: 640px) {
-        .app-page-wrap {
-          padding: 12px 8px 48px;
-        }
-
-        .app-layout-col {
-          gap: 10px;
-        }
-
-        .top-navbar {
-          padding: 0 2px;
-          gap: 8px 12px;
-        }
-
-        .brand-title {
-          font-size: 18px;
-        }
-
-        .date-italic-line {
-          font-size: 14.5px;
-        }
-
-        .top-actions-box {
-          width: 100%;
-          justify-content: space-between;
-          gap: 8px;
-        }
-
-        .tabs-pill-track {
-          flex: 1;
-          justify-content: space-between;
-          padding: 3px;
-          gap: 2px;
-        }
-
-        .nav-tab-btn {
-          flex: 1;
-          text-align: center;
-          padding: 7px 6px;
-          font-size: 11.5px;
-        }
-
-        .sync-status-pill {
-          padding: 5px 9px;
-          font-size: 11px;
-          flex-shrink: 0;
-        }
-
-        .main-content-card {
-          padding: 14px 10px;
-          border-radius: 20px;
-          gap: 12px;
-        }
       }
 
       /* Ambient Background Support */
@@ -258,7 +238,7 @@ export class PtApp extends LitElement {
     `,
   ];
 
-  @state() private tab: TabType = 'practice';
+  @state() private tab: TabType = 'today';
   @state() private instruments: Instrument[] = [];
   @state() private sessions: Session[] = [];
   @state() private activeSession: ActiveSession | null = null;
@@ -268,21 +248,29 @@ export class PtApp extends LitElement {
   @state() private backgroundUrl: string | null = null;
   @state() private backgroundVisible: boolean = false;
   @state() private now: number = Date.now();
+  @state() private wide: boolean = typeof window !== 'undefined' ? window.innerWidth >= 860 : true;
 
   @state() private manualLogModalOpen: boolean = false;
   @state() private editSessionModalOpen: boolean = false;
   @state() private sessionToEdit: Session | null = null;
   @state() private authModalOpen: boolean = false;
   @state() private authInitialTab: 'signin' | 'create' | 'magic' | 'reset-password' = 'signin';
+  @state() private syncPanelOpen: boolean = false;
+  @state() private celebrating: boolean = false;
 
   private unsubscribeStore?: () => void;
   private unsubscribeAuth?: () => void;
   private unsubscribeRecovery?: () => void;
   private timerInterval?: any;
+  private celebrationTimeout?: any;
+  private resizeHandler = () => {
+    this.wide = window.innerWidth >= 860;
+  };
 
   connectedCallback() {
     super.connectedCallback();
     this.refreshState();
+    applyThemeVars(this, this.settings.theme);
 
     this.unsubscribeStore = practiceStore.subscribe(() => {
       this.refreshState();
@@ -306,6 +294,7 @@ export class PtApp extends LitElement {
       this.now = Date.now();
     }, 1000);
 
+    window.addEventListener('resize', this.resizeHandler);
     this.checkBackground();
   }
 
@@ -315,15 +304,21 @@ export class PtApp extends LitElement {
     if (this.unsubscribeAuth) this.unsubscribeAuth();
     if (this.unsubscribeRecovery) this.unsubscribeRecovery();
     if (this.timerInterval) clearInterval(this.timerInterval);
+    if (this.celebrationTimeout) clearTimeout(this.celebrationTimeout);
+    window.removeEventListener('resize', this.resizeHandler);
   }
 
   private refreshState() {
+    const previousSettings = this.settings;
     this.instruments = practiceStore.getAllInstruments();
     this.sessions = practiceStore.getSessions();
     this.activeSession = practiceStore.getActiveSession();
     this.settings = practiceStore.getSettings();
     this.syncStatus = practiceStore.getSyncStatus();
     this.checkBackground();
+    if (previousSettings.theme !== this.settings.theme) {
+      applyThemeVars(this, this.settings.theme);
+    }
   }
 
   private async checkBackground() {
@@ -348,7 +343,30 @@ export class PtApp extends LitElement {
   }
 
   private handleEndSession(e?: CustomEvent<{ notes?: string }>) {
-    practiceStore.endSession(e?.detail?.notes);
+    this.withGoalCelebrationCheck(() => practiceStore.endSession(e?.detail?.notes));
+  }
+
+  /** Runs a mutation that may add practice minutes, celebrating if it crosses the weekly goal. */
+  private withGoalCelebrationCheck(mutate: () => void) {
+    const goalBefore = this.isGoalReachedNow();
+    mutate();
+    const goalAfter = this.isGoalReachedNow();
+    if (!goalBefore && goalAfter && this.settings.celebrateGoal) {
+      this.triggerCelebration();
+    }
+  }
+
+  private isGoalReachedNow(): boolean {
+    const goal = this.settings.weeklyGoalMinutes || 420;
+    return weekToDateMinutes(this.sessions, new Date(this.now)) >= goal;
+  }
+
+  private triggerCelebration() {
+    this.celebrating = true;
+    if (this.celebrationTimeout) clearTimeout(this.celebrationTimeout);
+    this.celebrationTimeout = setTimeout(() => {
+      this.celebrating = false;
+    }, 4200);
   }
 
   private handleDiscardSession() {
@@ -359,7 +377,7 @@ export class PtApp extends LitElement {
     e: CustomEvent<{ instrumentId: string; start: Date; duration: number; notes?: string }>
   ) {
     const { instrumentId, start, duration, notes } = e.detail;
-    practiceStore.logManualSession(instrumentId, start, duration, notes);
+    this.withGoalCelebrationCheck(() => practiceStore.logManualSession(instrumentId, start, duration, notes));
   }
 
   private handleQuickLog(e: CustomEvent<{ instrumentId: string; duration: number; daysAgo: number }>) {
@@ -367,7 +385,7 @@ export class PtApp extends LitElement {
     const day = new Date();
     day.setDate(day.getDate() - daysAgo);
     day.setHours(18, 0, 0, 0);
-    practiceStore.logManualSession(instrumentId, day, duration);
+    this.withGoalCelebrationCheck(() => practiceStore.logManualSession(instrumentId, day, duration));
   }
 
   private handleUpdateSession(e: CustomEvent<{ session: Session }>) {
@@ -419,35 +437,37 @@ export class PtApp extends LitElement {
     await practiceStore.syncWithCloud(true);
   }
 
+  private renderSyncPill(isAuthed: boolean) {
+    const dotClass = this.syncStatus === 'syncing' ? 'syncing' : !isAuthed ? 'guest' : 'synced';
+    const label = this.syncStatus === 'syncing'
+      ? 'syncing…'
+      : !isAuthed
+      ? 'this device only'
+      : `synced ${this.settings.lastSyncedAt ? formatRelativeTime(this.settings.lastSyncedAt) : 'now'}`;
+
+    return html`
+      <button class="sync-pill" @click=${() => (isAuthed ? (this.syncPanelOpen = !this.syncPanelOpen) : this.handleOpenAuthModal())}>
+        <span class="sync-dot ${dotClass}"></span>
+        <span>${label}</span>
+      </button>
+      ${this.syncPanelOpen
+        ? html`
+            <div class="sync-panel" @click=${(e: Event) => e.stopPropagation()}>
+              <div class="sync-panel-title">
+                ${this.syncStatus === 'syncing' ? 'Syncing…' : `Synced ${this.settings.lastSyncedAt ? formatRelativeTime(this.settings.lastSyncedAt) : 'now'}`}
+              </div>
+              <div class="sync-panel-copy">
+                Syncs on open, when you come back to the app, and a second after every session or edit.
+              </div>
+              <button class="btn btn-primary" style="height:40px" @click=${this.handleSyncNow}>Sync now</button>
+            </div>
+          `
+        : ''}
+    `;
+  }
+
   render() {
-    const today = new Date(this.now);
-    const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const MONTH_NAMES = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December',
-    ];
-    const todayLine = `${DAY_NAMES[today.getDay()]} ${today.getDate()} ${MONTH_NAMES[today.getMonth()]}`;
-
-    const TABS: { id: TabType; label: string }[] = [
-      { id: 'practice', label: 'Practice' },
-      { id: 'log', label: 'Log' },
-      { id: 'kit', label: 'Kit' },
-      { id: 'settings', label: 'Settings' },
-    ];
-
-    const activeTab = this.tab === 'main' ? 'practice' : this.tab === 'data' ? 'log' : this.tab;
     const isAuthed = this.authState.isAuthenticated;
-    const syncLabel = this.syncStatus === 'syncing' ? 'Syncing...' : isAuthed ? 'Synced' : 'On this device';
 
     return html`
       ${this.backgroundUrl
@@ -457,103 +477,122 @@ export class PtApp extends LitElement {
           ></div>`
         : ''}
 
-      <div class="app-page-wrap">
-        <div class="app-layout-col">
-          <!-- Top Navigation Bar -->
-          <header class="top-navbar">
-            <div class="brand-date-box">
-              <div class="brand-title">Practice</div>
-              <div class="date-italic-line">${todayLine}</div>
+      ${this.activeSession
+        ? html`
+            <pt-recording-overlay
+              .activeSession=${this.activeSession}
+              .instrument=${this.instruments.find((i) => i.id === this.activeSession!.instrumentId) || null}
+              .sessions=${this.sessions}
+              .now=${this.now}
+              .weeklyGoalMinutes=${this.settings.weeklyGoalMinutes || 420}
+              .wide=${this.wide}
+              .reduceMotion=${!!this.settings.reduceMotion}
+              @end-session=${this.handleEndSession}
+              @discard-session=${this.handleDiscardSession}
+            ></pt-recording-overlay>
+          `
+        : html`
+            <div class="app-page-wrap ${this.wide ? '' : 'narrow'}">
+              <div class="app-layout-col">
+                <header class="top-bar">
+                  <div class="header-title">${this.wide ? 'practice' : TABS.find((t) => t.id === this.tab)?.label}</div>
+                  <div class="top-actions">
+                    ${this.wide
+                      ? html`
+                          <nav class="pill-nav">
+                            ${TABS.map(
+                              (t) => html`
+                                <button class="pill-nav-btn ${this.tab === t.id ? 'active' : ''}" @click=${() => (this.tab = t.id)}>
+                                  ${t.label}
+                                </button>
+                              `
+                            )}
+                          </nav>
+                        `
+                      : ''}
+                    ${this.renderSyncPill(isAuthed)}
+                  </div>
+                </header>
+
+                <main>
+                  ${this.tab === 'today'
+                    ? html`
+                        <pt-today-view
+                          .instruments=${this.instruments}
+                          .sessions=${this.sessions}
+                          .settings=${this.settings}
+                          .now=${this.now}
+                          @start-session=${this.handleStartSession}
+                          @quick-log-session=${this.handleQuickLog}
+                          @open-manual-log=${() => (this.manualLogModalOpen = true)}
+                          @update-session=${this.handleUpdateSession}
+                        ></pt-today-view>
+                      `
+                    : ''}
+                  ${this.tab === 'log'
+                    ? html`
+                        <pt-log-view
+                          .instruments=${this.instruments}
+                          .sessions=${this.sessions}
+                          @save-manual-session=${this.handleSaveManualSession}
+                          @update-session=${this.handleUpdateSession}
+                          @delete-session=${this.handleDeleteSession}
+                        ></pt-log-view>
+                      `
+                    : ''}
+                  ${this.tab === 'insights'
+                    ? html`
+                        <pt-insights-view
+                          .instruments=${this.instruments}
+                          .sessions=${this.sessions}
+                          .settings=${this.settings}
+                          .now=${this.now}
+                          @start-session=${this.handleStartSession}
+                        ></pt-insights-view>
+                      `
+                    : ''}
+                  ${this.tab === 'settings'
+                    ? html`
+                        <pt-settings-view
+                          .settings=${this.settings}
+                          .authState=${this.authState}
+                          .syncStatus=${this.syncStatus}
+                          .sessionCount=${this.sessions.filter((s) => !s.deletedAt).length}
+                          .instruments=${this.instruments}
+                          .sessions=${this.sessions}
+                          @update-settings=${this.handleUpdateSettings}
+                          @open-auth-modal=${this.handleOpenAuthModal}
+                          @sign-out=${this.handleSignOut}
+                          @sync-now=${this.handleSyncNow}
+                          @add-instrument=${this.handleAddInstrument}
+                          @update-instrument=${this.handleUpdateInstrument}
+                          @retire-instrument=${this.handleRetireInstrument}
+                          @restore-instrument=${this.handleRestoreInstrument}
+                        ></pt-settings-view>
+                      `
+                    : ''}
+                </main>
+              </div>
             </div>
 
-            <div class="top-actions-box">
-              <nav class="tabs-pill-track">
-                ${TABS.map(
-                  (t) => html`
-                    <button
-                      class="nav-tab-btn ${activeTab === t.id ? 'active' : ''}"
-                      @click=${() => (this.tab = t.id)}
-                    >
-                      ${t.label}
-                    </button>
-                  `
-                )}
-              </nav>
+            ${!this.wide
+              ? html`
+                  <nav class="bottom-tab-bar">
+                    ${TABS.map(
+                      (t) => html`
+                        <button class="bottom-tab-btn ${this.tab === t.id ? 'active' : ''}" @click=${() => (this.tab = t.id)}>
+                          ${t.label}
+                        </button>
+                      `
+                    )}
+                  </nav>
+                `
+              : ''}
+          `}
 
-              <button
-                class="sync-status-pill"
-                @click=${() => (this.tab = 'settings')}
-                title="Sync status · click to open settings"
-              >
-                <span
-                  class="sync-dot ${this.syncStatus === 'syncing'
-                    ? 'syncing'
-                    : !isAuthed
-                    ? 'offline'
-                    : ''}"
-                ></span>
-                <span>${syncLabel}</span>
-              </button>
-            </div>
-          </header>
-
-          <!-- Main Container Card -->
-          <main class="main-content-card">
-            ${activeTab === 'practice'
-              ? html`
-                  <pt-main-view
-                    .instruments=${this.instruments}
-                    .sessions=${this.sessions}
-                    .activeSession=${this.activeSession}
-                    .now=${this.now}
-                    @start-session=${this.handleStartSession}
-                    @end-session=${this.handleEndSession}
-                    @discard-session=${this.handleDiscardSession}
-                    @quick-log-session=${this.handleQuickLog}
-                    @open-manual-log=${() => (this.manualLogModalOpen = true)}
-                  ></pt-main-view>
-                `
-              : ''}
-            ${activeTab === 'log'
-              ? html`
-                  <pt-log-view
-                    .instruments=${this.instruments}
-                    .sessions=${this.sessions}
-                    @save-manual-session=${this.handleSaveManualSession}
-                    @update-session=${this.handleUpdateSession}
-                    @delete-session=${this.handleDeleteSession}
-                  ></pt-log-view>
-                `
-              : ''}
-            ${activeTab === 'kit'
-              ? html`
-                  <pt-kit-view
-                    .instruments=${this.instruments}
-                    .sessions=${this.sessions}
-                    @add-instrument=${this.handleAddInstrument}
-                    @update-instrument=${this.handleUpdateInstrument}
-                    @retire-instrument=${this.handleRetireInstrument}
-                    @restore-instrument=${this.handleRestoreInstrument}
-                  ></pt-kit-view>
-                `
-              : ''}
-            ${activeTab === 'settings'
-              ? html`
-                  <pt-settings-view
-                    .settings=${this.settings}
-                    .authState=${this.authState}
-                    .syncStatus=${this.syncStatus}
-                    .sessionCount=${this.sessions.filter((s) => !s.deletedAt).length}
-                    @update-settings=${this.handleUpdateSettings}
-                    @open-auth-modal=${this.handleOpenAuthModal}
-                    @sign-out=${this.handleSignOut}
-                    @sync-now=${this.handleSyncNow}
-                  ></pt-settings-view>
-                `
-              : ''}
-          </main>
-        </div>
-      </div>
+      ${this.celebrating
+        ? html`<pt-celebration-overlay .goalMinutes=${this.settings.weeklyGoalMinutes || 420}></pt-celebration-overlay>`
+        : ''}
 
       <!-- Modals -->
       <pt-auth-modal
