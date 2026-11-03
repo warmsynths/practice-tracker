@@ -20,7 +20,7 @@ export class PtAuthModal extends LitElement {
         position: fixed;
         inset: 0;
         z-index: 1000;
-        background: rgba(35, 36, 31, 0.44);
+        background: rgba(20, 10, 15, 0.66);
         backdrop-filter: blur(4px);
         -webkit-backdrop-filter: blur(4px);
         display: flex;
@@ -34,15 +34,15 @@ export class PtAuthModal extends LitElement {
       .modal-card {
         width: 380px;
         max-width: 100%;
-        background: #FBFBF9;
-        border-radius: 24px;
-        padding: 24px;
+        background: var(--card, #FBFBF9);
+        border-radius: 28px;
+        padding: 26px;
         display: flex;
         flex-direction: column;
         gap: 18px;
-        box-shadow: 0 30px 70px -32px rgba(35, 36, 31, 0.55);
-        animation: riseIn 260ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-        color: #23241F;
+        box-shadow: 0 30px 70px -20px rgba(10, 5, 15, 0.8);
+        animation: popIn 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+        color: var(--ink, #23241F);
         box-sizing: border-box;
       }
 
@@ -55,28 +55,28 @@ export class PtAuthModal extends LitElement {
       }
 
       .title-main {
+        font-family: 'Gabarito', sans-serif;
         font-size: 20px;
-        font-weight: 700;
+        font-weight: 800;
         letter-spacing: -0.02em;
         line-height: 1.2;
-        color: #23241F;
+        color: var(--ink);
       }
 
-      .subtitle-italic {
-        font-family: 'Instrument Serif', serif;
-        font-style: italic;
-        font-size: 16px;
-        color: #767668;
-        margin-top: 3px;
-        line-height: 1.2;
+      .subtitle-line {
+        font-family: 'Manrope', sans-serif;
+        font-size: 13px;
+        color: var(--muted, #767668);
+        margin-top: 4px;
+        line-height: 1.3;
       }
 
       .close-round-btn {
-        width: 28px;
-        height: 28px;
+        width: 34px;
+        height: 34px;
         border-radius: 50%;
-        background: #EFEEE9;
-        color: #767668;
+        background: var(--raised, #EFEEE9);
+        color: var(--muted, #767668);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -84,12 +84,12 @@ export class PtAuthModal extends LitElement {
         cursor: pointer;
         flex-shrink: 0;
         border: none;
-        transition: background-color 150ms ease-out, color 150ms ease-out;
+        transition: filter 150ms ease-out, color 150ms ease-out;
       }
 
       .close-round-btn:hover {
-        background: #E4E3DD;
-        color: #23241F;
+        filter: brightness(1.1);
+        color: var(--ink);
       }
 
       /* Segmented 3-Tab Control */
@@ -97,32 +97,32 @@ export class PtAuthModal extends LitElement {
         display: grid;
         grid-template-columns: 1fr 1fr 1fr;
         gap: 3px;
-        background: #EFEEE9;
-        border-radius: 13px;
-        padding: 3px;
+        background: var(--raised, #EFEEE9);
+        border-radius: 999px;
+        padding: 4px;
       }
 
       .tab-choice-btn {
         border: none;
-        border-radius: 10px;
+        border-radius: 999px;
         height: 34px;
         display: flex;
         align-items: center;
         justify-content: center;
+        font-family: 'Gabarito', sans-serif;
         font-size: 12px;
         font-weight: 700;
         cursor: pointer;
         white-space: nowrap;
         background: transparent;
-        color: #767668;
-        transition: background-color 160ms ease-out, color 160ms ease-out, box-shadow 160ms ease-out;
+        color: var(--muted, #767668);
+        transition: background-color 160ms ease-out, color 160ms ease-out;
         user-select: none;
       }
 
       .tab-choice-btn.active {
-        background: #FFFFFF;
-        color: #23241F;
-        box-shadow: 0 2px 7px -3px rgba(35, 36, 31, 0.3);
+        background: var(--ink);
+        color: var(--bg);
       }
 
       /* Form Fields */
@@ -139,10 +139,11 @@ export class PtAuthModal extends LitElement {
       }
 
       .field-label {
-        font-size: 9.5px;
-        letter-spacing: 0.13em;
-        color: #A3A297;
-        font-weight: 700;
+        font-family: 'Manrope', sans-serif;
+        font-size: 10.5px;
+        letter-spacing: 0.1em;
+        color: var(--muted, #A3A297);
+        font-weight: 800;
         text-transform: uppercase;
       }
 
@@ -154,14 +155,15 @@ export class PtAuthModal extends LitElement {
       }
 
       .forgot-action {
+        font-family: 'Manrope', sans-serif;
         font-size: 11.5px;
-        color: #4F6353;
+        color: var(--accent);
         font-weight: 700;
         cursor: pointer;
         background: none;
         border: none;
         padding: 0;
-        transition: opacity 140ms ease;
+        transition: opacity 140ms ease-out;
       }
 
       .forgot-action:hover {
@@ -170,18 +172,18 @@ export class PtAuthModal extends LitElement {
       }
 
       .text-input {
-        font-family: inherit;
+        font-family: 'Manrope', sans-serif;
         font-size: 14px;
-        color: #23241F;
-        background: #FFFFFF;
-        border: 1px solid #E7E6DF;
-        border-radius: 12px;
+        color: var(--ink);
+        background: var(--raised, #FFFFFF);
+        border: 1px solid var(--line, #E7E6DF);
+        border-radius: 999px;
         height: 48px;
-        padding: 0 15px;
+        padding: 0 18px;
         outline: none;
         width: 100%;
         box-sizing: border-box;
-        transition: border-color 140ms ease, box-shadow 140ms ease;
+        transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
       }
 
       .text-input.pw {
@@ -189,14 +191,15 @@ export class PtAuthModal extends LitElement {
       }
 
       .text-input:focus {
-        border-color: #4F6353;
-        box-shadow: 0 0 0 1px #4F6353;
+        border-color: var(--accent);
+        box-shadow: 0 0 0 1px var(--accent);
       }
 
       .helper-copy {
+        font-family: 'Manrope', sans-serif;
         font-size: 13px;
         line-height: 1.6;
-        color: #767668;
+        color: var(--muted, #767668);
         text-wrap: pretty;
       }
 
@@ -204,24 +207,25 @@ export class PtAuthModal extends LitElement {
         display: flex;
         gap: 10px;
         align-items: flex-start;
-        background: #F1F0EA;
-        border-radius: 13px;
-        padding: 12px 13px;
+        background: var(--raised, #F1F0EA);
+        border-radius: 16px;
+        padding: 12px 14px;
       }
 
       .adopt-dot {
         width: 7px;
         height: 7px;
         border-radius: 50%;
-        background: #8A7B94;
+        background: var(--chart, #8A7B94);
         margin-top: 6px;
         flex-shrink: 0;
       }
 
       .adopt-text {
+        font-family: 'Manrope', sans-serif;
         font-size: 12.5px;
         line-height: 1.55;
-        color: #4A4945;
+        color: var(--muted);
         text-wrap: pretty;
       }
 
@@ -232,32 +236,33 @@ export class PtAuthModal extends LitElement {
         gap: 14px;
       }
 
-      .primary-forest-btn {
-        background: #4F6353;
-        color: #F7F6F1;
-        border-radius: 14px;
+      .primary-accent-btn {
+        background: var(--accent);
+        color: var(--bg);
+        border-radius: 999px;
         height: 50px;
         display: flex;
         align-items: center;
         justify-content: center;
+        font-family: 'Gabarito', sans-serif;
         font-size: 14px;
-        font-weight: 700;
+        font-weight: 800;
         cursor: pointer;
         border: none;
         width: 100%;
-        transition: background-color 160ms ease-out, transform 120ms ease;
+        transition: background-color 160ms ease-out, transform 140ms ease-out;
       }
 
-      .primary-forest-btn:hover {
-        background: #445646;
+      .primary-accent-btn:hover {
+        background: var(--accentHi);
       }
 
-      .primary-forest-btn:active {
-        transform: scale(0.985);
+      .primary-accent-btn:active {
+        transform: scale(0.97);
       }
 
-      .primary-forest-btn:disabled {
-        opacity: 0.6;
+      .primary-accent-btn:disabled {
+        opacity: 0.5;
         cursor: not-allowed;
         transform: none;
       }
@@ -271,39 +276,41 @@ export class PtAuthModal extends LitElement {
       .or-line {
         flex: 1;
         height: 1px;
-        background: #E7E6DF;
+        background: var(--line, #E7E6DF);
       }
 
       .or-text {
+        font-family: 'Manrope', sans-serif;
         font-size: 10.5px;
         letter-spacing: 0.1em;
-        color: #A3A297;
+        color: var(--muted, #A3A297);
         font-weight: 700;
       }
 
       .google-btn {
-        background: #FFFFFF;
-        border: 1px solid #DDDCD4;
-        border-radius: 14px;
+        background: var(--raised, #FFFFFF);
+        border: 1px solid var(--line, #DDDCD4);
+        border-radius: 999px;
         height: 48px;
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 10px;
+        font-family: 'Gabarito', sans-serif;
         font-size: 13.5px;
         font-weight: 700;
-        color: #23241F;
+        color: var(--ink);
         cursor: pointer;
         width: 100%;
-        transition: background-color 150ms ease-out, transform 120ms ease;
+        transition: filter 150ms ease-out, transform 140ms ease-out;
       }
 
       .google-btn:hover {
-        background: #F4F3EE;
+        filter: brightness(0.97);
       }
 
       .google-btn:active {
-        transform: scale(0.985);
+        transform: scale(0.97);
       }
 
       .google-btn:disabled {
@@ -323,13 +330,14 @@ export class PtAuthModal extends LitElement {
         display: flex;
         justify-content: center;
         gap: 6px;
+        font-family: 'Manrope', sans-serif;
         font-size: 12.5px;
-        color: #767668;
+        color: var(--muted, #767668);
         text-align: center;
       }
 
       .switch-action {
-        color: #4F6353;
+        color: var(--accent);
         font-weight: 700;
         cursor: pointer;
         text-decoration: underline;
@@ -337,6 +345,7 @@ export class PtAuthModal extends LitElement {
         background: none;
         border: none;
         padding: 0;
+        font-family: 'Manrope', sans-serif;
         font-size: 12.5px;
       }
 
@@ -346,22 +355,43 @@ export class PtAuthModal extends LitElement {
 
       /* Alerts */
       .alert-banner {
-        border-radius: 12px;
+        border-radius: 14px;
         padding: 10px 14px;
+        font-family: 'Manrope', sans-serif;
         font-size: 12.5px;
         line-height: 1.45;
       }
 
       .alert-error {
-        background: #FBEAE8;
-        border: 1px solid #F2B8B5;
-        color: #B3261E;
+        background: rgba(255, 122, 92, 0.14);
+        border: 1px solid var(--accent);
+        color: var(--accent);
       }
 
       .alert-success {
-        background: #EBF3EC;
-        border: 1px solid #B8DCBE;
-        color: #2E6930;
+        background: rgba(155, 212, 155, 0.14);
+        border: 1px solid #9BD49B;
+        color: #9BD49B;
+      }
+
+      /* "Sent" state (magic link) */
+      .sent-state {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        text-align: center;
+        padding: 6px 0 2px;
+      }
+
+      .sent-copy {
+        font-family: 'Manrope', sans-serif;
+        font-size: 14px;
+        line-height: 1.55;
+        color: var(--muted);
+      }
+
+      .sent-copy b {
+        color: var(--ink);
       }
     `,
   ];
@@ -376,6 +406,7 @@ export class PtAuthModal extends LitElement {
   @state() private isLoading = false;
   @state() private errorMessage: string | null = null;
   @state() private successMessage: string | null = null;
+  @state() private magicLinkSentEmail: string | null = null;
 
   willUpdate(changedProps: Map<string, unknown>) {
     if (changedProps.has('open') && this.open) {
@@ -384,6 +415,7 @@ export class PtAuthModal extends LitElement {
       }
       this.errorMessage = null;
       this.successMessage = null;
+      this.magicLinkSentEmail = null;
     }
   }
 
@@ -392,6 +424,7 @@ export class PtAuthModal extends LitElement {
     this.successMessage = null;
     this.password = '';
     this.confirmPassword = '';
+    this.magicLinkSentEmail = null;
     this.dispatchEvent(new CustomEvent('close-modal', { bubbles: true, composed: true }));
   }
 
@@ -499,7 +532,7 @@ export class PtAuthModal extends LitElement {
         const res = await authService.signInWithOtp(emailTrimmed);
         if (res.success) {
           playEndSound(practiceStore.getSettings().soundEnabled);
-          this.successMessage = res.message || "We've sent a magic login link to your inbox!";
+          this.magicLinkSentEmail = emailTrimmed;
           this.dispatchEvent(
             new CustomEvent('magic-link-sent', {
               detail: { email: emailTrimmed },
@@ -566,8 +599,33 @@ export class PtAuthModal extends LitElement {
     }
   }
 
+  private renderSentState() {
+    return html`
+      <div class="modal-header">
+        <div>
+          <div class="title-main">Check your email</div>
+        </div>
+        <button type="button" class="close-round-btn" @click=${this.close} aria-label="Close modal">&times;</button>
+      </div>
+      <div class="sent-state">
+        <div class="sent-copy">
+          We sent a sign-in link to <b>${this.magicLinkSentEmail}</b>. Open it on any device.
+        </div>
+        <button type="button" class="primary-accent-btn" @click=${this.close}>I opened the link</button>
+      </div>
+    `;
+  }
+
   render() {
     if (!this.open) return html``;
+
+    if (this.magicLinkSentEmail) {
+      return html`
+        <div class="modal-backdrop" @click=${(e: Event) => e.target === e.currentTarget && this.close()} @keydown=${this.handleKeyDown}>
+          <div class="modal-card">${this.renderSentState()}</div>
+        </div>
+      `;
+    }
 
     const isReset = this.activeTab === 'reset-password';
     const ctaText =
@@ -582,7 +640,7 @@ export class PtAuthModal extends LitElement {
         : 'Send magic link';
 
     const titleMain = isReset ? 'Set new password' : 'Musician account';
-    const subtitle = isReset ? 'Enter a new password for your account' : 'so your hours follow you';
+    const subtitle = isReset ? 'Enter a new password for your account' : 'so your sessions follow you';
 
     return html`
       <div
@@ -595,7 +653,7 @@ export class PtAuthModal extends LitElement {
           <div class="modal-header">
             <div>
               <div class="title-main">${titleMain}</div>
-              <div class="subtitle-italic">${subtitle}</div>
+              <div class="subtitle-line">${subtitle}</div>
             </div>
             <button
               type="button"
@@ -623,7 +681,7 @@ export class PtAuthModal extends LitElement {
                     class="tab-choice-btn ${this.activeTab === 'create' ? 'active' : ''}"
                     @click=${() => this.setTab('create')}
                   >
-                    Create account
+                    Create
                   </button>
                   <button
                     type="button"
@@ -650,7 +708,7 @@ export class PtAuthModal extends LitElement {
               ${isReset
                 ? html`
                     <div class="field-block">
-                      <div class="field-label">NEW PASSWORD</div>
+                      <div class="field-label">New password</div>
                       <input
                         type="password"
                         class="text-input pw"
@@ -663,7 +721,7 @@ export class PtAuthModal extends LitElement {
                       />
                     </div>
                     <div class="field-block">
-                      <div class="field-label">CONFIRM NEW PASSWORD</div>
+                      <div class="field-label">Confirm new password</div>
                       <input
                         type="password"
                         class="text-input pw"
@@ -680,7 +738,7 @@ export class PtAuthModal extends LitElement {
                 : html`
                     <!-- Email Address -->
                     <div class="field-block">
-                      <div class="field-label">EMAIL ADDRESS</div>
+                      <div class="field-label">Email address</div>
                       <input
                         type="email"
                         class="text-input"
@@ -696,7 +754,7 @@ export class PtAuthModal extends LitElement {
                     ${this.activeTab === 'magic'
                       ? html`
                           <div class="helper-copy">
-                            We'll email you a passwordless one-time login link. Click the link on any device to log in instantly.
+                            No password. We'll email a one-time link that signs you in on any device.
                           </div>
                         `
                       : ''}
@@ -706,7 +764,7 @@ export class PtAuthModal extends LitElement {
                       ? html`
                           <div class="field-block">
                             <div class="label-row">
-                              <div class="field-label">PASSWORD</div>
+                              <div class="field-label">Password</div>
                               <button
                                 type="button"
                                 class="forgot-action"
@@ -731,7 +789,7 @@ export class PtAuthModal extends LitElement {
                     ${this.activeTab === 'create'
                       ? html`
                           <div class="field-block">
-                            <div class="field-label">PASSWORD</div>
+                            <div class="field-label">Password</div>
                             <input
                               type="password"
                               class="text-input pw"
@@ -742,7 +800,7 @@ export class PtAuthModal extends LitElement {
                             />
                           </div>
                           <div class="field-block">
-                            <div class="field-label">CONFIRM PASSWORD</div>
+                            <div class="field-label">Confirm password</div>
                             <input
                               type="password"
                               class="text-input pw"
@@ -756,7 +814,7 @@ export class PtAuthModal extends LitElement {
                           <div class="adopt-callout">
                             <span class="adopt-dot"></span>
                             <div class="adopt-text">
-                              Your practice history from this browser will be automatically adopted into your new account.
+                              Sessions on this device move into your new account.
                             </div>
                           </div>
                         `
@@ -768,7 +826,7 @@ export class PtAuthModal extends LitElement {
             <div class="actions-stack" style="margin-top: 18px;">
               <button
                 type="submit"
-                class="primary-forest-btn"
+                class="primary-accent-btn"
                 ?disabled=${this.isLoading}
               >
                 ${ctaText}
