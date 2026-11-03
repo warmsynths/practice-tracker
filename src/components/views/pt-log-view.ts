@@ -77,7 +77,7 @@ export class PtLogView extends LitElement {
       .week-strip-grid {
         flex: 1;
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 5px;
         min-width: 0;
       }

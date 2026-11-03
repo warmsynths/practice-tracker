@@ -64,7 +64,7 @@ export class PtSettingsView extends LitElement {
       @media (min-width: 860px) {
         .settings-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
           align-items: start;
         }
       }
@@ -324,7 +324,7 @@ export class PtSettingsView extends LitElement {
       /* Theme swatches */
       .theme-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
         margin-top: 10px;
       }

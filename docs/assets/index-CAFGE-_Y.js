@@ -739,9 +739,9 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         align-items: start;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .top-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
         }
       }
 
@@ -756,7 +756,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         gap: 14px;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .hero-card {
           flex-direction: row;
           align-items: flex-start;
@@ -779,7 +779,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         flex-shrink: 0;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .hero-glyph-box {
           width: 120px;
           height: 149px;
@@ -791,7 +791,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         transform-origin: 0 0;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .hero-glyph-scale {
           transform: scale(0.48);
         }
@@ -817,7 +817,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         letter-spacing: -0.02em;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .hero-name {
           font-size: 21px;
         }
@@ -872,11 +872,19 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         color: var(--accent);
       }
 
-      /* Other instrument tiles */
+      /* Other instrument tiles — 2 columns, except the 860–1039px "wide but
+         narrower than 1040" zone where the sidebar-width second grid track
+         is too tight for 2 tiles, so it drops to 1 column there only. */
       .tiles-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 10px;
+      }
+
+      @media (min-width: 860px) and (max-width: 1039px) {
+        .tiles-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
       }
 
       .tile {
@@ -897,7 +905,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         flex-shrink: 0;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .tile-glyph-box {
           width: 48px;
           height: 60px;
@@ -909,7 +917,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         transform-origin: 0 0;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .tile-glyph-scale {
           transform: scale(0.192);
         }
@@ -1434,7 +1442,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
       .week-strip-grid {
         flex: 1;
         display: grid;
-        grid-template-columns: repeat(7, 1fr);
+        grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 5px;
         min-width: 0;
       }
@@ -2405,16 +2413,16 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         gap: 12px;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
         }
       }
 
       .card-half { grid-column: span 2; }
       .card-full { grid-column: span 4; }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .card-half, .card-full {
           grid-column: span 1 !important;
         }
@@ -2544,13 +2552,13 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
       /* One session away */
       .one-away-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 12px;
       }
 
       @media (max-width: 640px) {
         .one-away-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
         }
       }
 
@@ -2622,16 +2630,20 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         color: var(--muted);
       }
 
-      /* Heatmap */
+      /* Heatmap — scrolls horizontally within its card rather than
+         overflowing the page when there are more weeks than fit. */
       .heatmap-grid {
         display: grid;
         grid-auto-flow: column;
         grid-template-rows: repeat(7, 1fr);
         gap: 3px;
         max-width: 1100px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 2px;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .heatmap-grid {
           max-width: 600px;
         }
@@ -2755,7 +2767,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
       /* Records */
       .records-grid {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 14px 16px;
       }
 
@@ -3127,7 +3139,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
       @media (min-width: 860px) {
         .settings-grid {
           display: grid;
-          grid-template-columns: 1fr 1fr;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
           align-items: start;
         }
       }
@@ -3387,7 +3399,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
       /* Theme swatches */
       .theme-grid {
         display: grid;
-        grid-template-columns: repeat(3, 1fr);
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 10px;
         margin-top: 10px;
       }
@@ -3856,7 +3868,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
 
       .date-time-row {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 10px;
         margin-bottom: 18px;
       }
@@ -3884,7 +3896,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
 
       .actions-row {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 10px;
       }
 
@@ -3964,7 +3976,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
             />
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
             <div class="form-group">
               <label class="form-label">Date</label>
               <input
@@ -4395,7 +4407,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
       /* Segmented 3-Tab Control */
       .segmented-tabs-track {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 3px;
         background: var(--raised, #EFEEE9);
         border-radius: 999px;
@@ -5282,7 +5294,7 @@ ${x}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         border-radius: 999px;
         background: var(--card);
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         padding: 5px;
         gap: 4px;
         box-shadow: 0 10px 30px rgba(10, 5, 15, 0.5);

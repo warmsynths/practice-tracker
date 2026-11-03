@@ -188,7 +188,7 @@ export class PtApp extends LitElement {
         border-radius: 999px;
         background: var(--card);
         display: grid;
-        grid-template-columns: repeat(4, 1fr);
+        grid-template-columns: repeat(4, minmax(0, 1fr));
         padding: 5px;
         gap: 4px;
         box-shadow: 0 10px 30px rgba(10, 5, 15, 0.5);

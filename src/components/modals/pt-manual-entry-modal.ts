@@ -161,7 +161,7 @@ export class PtManualEntryModal extends LitElement {
 
       .date-time-row {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 10px;
         margin-bottom: 18px;
       }
@@ -189,7 +189,7 @@ export class PtManualEntryModal extends LitElement {
 
       .actions-row {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 10px;
       }
 

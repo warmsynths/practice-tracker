@@ -95,7 +95,7 @@ export class PtAuthModal extends LitElement {
       /* Segmented 3-Tab Control */
       .segmented-tabs-track {
         display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
         gap: 3px;
         background: var(--raised, #EFEEE9);
         border-radius: 999px;

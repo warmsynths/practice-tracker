@@ -44,9 +44,9 @@ export class PtTodayView extends LitElement {
         align-items: start;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .top-grid {
-          grid-template-columns: 1fr;
+          grid-template-columns: minmax(0, 1fr);
         }
       }
 
@@ -61,7 +61,7 @@ export class PtTodayView extends LitElement {
         gap: 14px;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .hero-card {
           flex-direction: row;
           align-items: flex-start;
@@ -84,7 +84,7 @@ export class PtTodayView extends LitElement {
         flex-shrink: 0;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .hero-glyph-box {
           width: 120px;
           height: 149px;
@@ -96,7 +96,7 @@ export class PtTodayView extends LitElement {
         transform-origin: 0 0;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .hero-glyph-scale {
           transform: scale(0.48);
         }
@@ -122,7 +122,7 @@ export class PtTodayView extends LitElement {
         letter-spacing: -0.02em;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .hero-name {
           font-size: 21px;
         }
@@ -177,11 +177,19 @@ export class PtTodayView extends LitElement {
         color: var(--accent);
       }
 
-      /* Other instrument tiles */
+      /* Other instrument tiles — 2 columns, except the 860–1039px "wide but
+         narrower than 1040" zone where the sidebar-width second grid track
+         is too tight for 2 tiles, so it drops to 1 column there only. */
       .tiles-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
         gap: 10px;
+      }
+
+      @media (min-width: 860px) and (max-width: 1039px) {
+        .tiles-grid {
+          grid-template-columns: minmax(0, 1fr);
+        }
       }
 
       .tile {
@@ -202,7 +210,7 @@ export class PtTodayView extends LitElement {
         flex-shrink: 0;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .tile-glyph-box {
           width: 48px;
           height: 60px;
@@ -214,7 +222,7 @@ export class PtTodayView extends LitElement {
         transform-origin: 0 0;
       }
 
-      @media (max-width: 860px) {
+      @media (max-width: 859px) {
         .tile-glyph-scale {
           transform: scale(0.192);
         }
