@@ -16,11 +16,14 @@ export function glyphKindFor(instrument: Instrument | null | undefined): GlyphKi
   if (instrument.glyphKind) return instrument.glyphKind;
   const n = instrument.name.toLowerCase();
   if (n.includes('bass')) return 'bass';
+  if (n.includes('acoustic')) return 'acoustic';
   if (n.includes('electric')) return 'electric';
   if (n.includes('piano') || n.includes('key')) return 'piano';
   if (n.includes('drum') || n.includes('pad')) return 'pads';
   if (n.includes('sax') || n.includes('flute') || n.includes('trumpet') || n.includes('wind') || n.includes('horn') || n.includes('clarinet')) return 'wind';
   if (n.includes('voice') || n.includes('vocal') || n.includes('sing')) return 'voice';
-  if (n.includes('guitar')) return 'acoustic';
+  // A bare "Guitar" (no acoustic/electric qualifier) defaults to electric, so it
+  // reads as visually distinct from an explicit "Acoustic Guitar" entry.
+  if (n.includes('guitar')) return 'electric';
   return 'acoustic';
 }
