@@ -2,7 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { Instrument, Session, AppSettings } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
-import { calculateBenchStats, BenchDataCalculations } from '../../utils/bench-metrics';
+import { calculateBenchStats, BenchDataCalculations, fmtMin } from '../../utils/bench-metrics';
 import { isSameDay, weekToDateMinutes } from '../../utils/date-utils';
 import { glyphKindFor } from '../../utils/glyph-utils';
 import '../common/pt-glyph';
@@ -106,7 +106,6 @@ export class PtTodayView extends LitElement {
         display: inline-flex;
         align-self: flex-start;
         background: var(--raised);
-        color: var(--accent);
         border-radius: 999px;
         padding: 6px 12px;
         font-size: 11.5px;
@@ -157,6 +156,28 @@ export class PtTodayView extends LitElement {
 
       .play-btn:hover {
         background: var(--accentHi);
+      }
+
+      /* Solid CSS-triangle play glyph (matches the prototype's border-trick
+         icon) instead of an outlined arrow. */
+      .play-triangle {
+        width: 0;
+        height: 0;
+        border-left: 12px solid var(--bg);
+        border-top: 8px solid transparent;
+        border-bottom: 8px solid transparent;
+        flex-shrink: 0;
+      }
+
+      .tile-play-triangle {
+        border-left-width: 9px;
+        border-top-width: 6px;
+        border-bottom-width: 6px;
+        border-left-color: var(--ink);
+      }
+
+      .tile-play-btn:hover .tile-play-triangle {
+        border-left-color: var(--bg);
       }
 
       .play-btn:active {
@@ -519,6 +540,13 @@ export class PtTodayView extends LitElement {
     if (this.toastTimeout) clearTimeout(this.toastTimeout);
   }
 
+  private hhmm(d: Date): string {
+    let h = d.getHours();
+    const ap = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    return `${h}:${String(d.getMinutes()).padStart(2, '0')}${ap}`;
+  }
+
   /** Detects a freshly-added session (new id at the front of the list) to surface the
    * post-session notes draft sheet, without guessing from elapsed wall-clock time. */
   willUpdate(changed: Map<PropertyKey, unknown>) {
@@ -545,6 +573,10 @@ export class PtTodayView extends LitElement {
     const heroInst = this.instruments.find((i) => i.id === stats.nextUp.selectedId) || null;
     const isUserPick = stats.nextUp.selectedId !== stats.pick.id;
     const heroKind = glyphKindFor(heroInst);
+    // `nextUp.line` is a longer "Last played Xd ago · Y% of your last six
+    // weeks" string meant for a dense list row; keep the hero tag pill short
+    // (just the "last played" half) so it stays on one line like the design.
+    const heroGapText = stats.nextUp.line.split(' · ')[0].replace(/^Last /, '').toLowerCase();
 
     const todaySessions = this.sessions.filter(
       (s) => !s.deletedAt && isSameDay(new Date(s.start), new Date(this.now))
@@ -564,7 +596,9 @@ export class PtTodayView extends LitElement {
               </div>
             </div>
             <div class="hero-info">
-              <div class="hero-tag">${isUserPick ? 'Your pick' : `Play next · ${stats.nextUp.line}`}</div>
+              <div class="hero-tag" style="color:${isUserPick ? 'var(--ink)' : 'var(--accent)'}">
+                ${isUserPick ? 'Your pick' : `Play next · ${heroGapText}`}
+              </div>
               <div class="hero-name">${stats.nextUp.name}</div>
               <div class="hero-reason">${stats.nextUp.reason}</div>
               <div class="hero-spacer"></div>
@@ -574,9 +608,7 @@ export class PtTodayView extends LitElement {
                   </button>`
                 : ''}
               <button class="play-btn" @click=${() => this.handleStart(stats.nextUp.selectedId)}>
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="var(--bg)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M4.5 12h14M13 6.5l5.5 5.5L13 17.5"></path>
-                </svg>
+                <span class="play-triangle"></span>
                 Play ${stats.nextUp.name}
               </button>
             </div>
@@ -606,9 +638,7 @@ export class PtTodayView extends LitElement {
                         this.handleStart(q.id);
                       }}
                     >
-                      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4.5 12h14M13 6.5l5.5 5.5L13 17.5"></path>
-                      </svg>
+                      <span class="play-triangle tile-play-triangle"></span>
                     </button>
                   </div>
                 `;
@@ -619,7 +649,7 @@ export class PtTodayView extends LitElement {
         <div class="summary-card">
           <div class="summary-header">
             <span>Today</span>
-            <span>${todayTotal > 0 ? `${todayTotal} min` : ''}</span>
+            <span>${todayTotal > 0 ? fmtMin(todayTotal) : ''}</span>
           </div>
           ${todaySessions.length > 0
             ? html`
@@ -629,7 +659,7 @@ export class PtTodayView extends LitElement {
                     return html`
                       <span class="summary-chip">
                         <span style="width:6px;height:6px;border-radius:50%;background:${inst?.color || 'var(--muted)'}"></span>
-                        ${inst?.name || 'Session'} · ${s.duration}m
+                        ${inst?.name || 'Session'} · ${fmtMin(s.duration)}
                       </span>
                     `;
                   })}
@@ -643,7 +673,7 @@ export class PtTodayView extends LitElement {
           <div class="progress-track">
             <div class="progress-fill" style="width:${weekPct}%"></div>
           </div>
-          <div class="progress-caption">${weekSoFar} of ${goal} this week</div>
+          <div class="progress-caption">${fmtMin(weekSoFar)} of ${fmtMin(goal)} this week</div>
         </div>
 
         ${this.quickLogOpen
@@ -710,7 +740,10 @@ export class PtTodayView extends LitElement {
           ? html`
               <div class="draft-sheet">
                 <div class="draft-title">Nice session.</div>
-                <div class="draft-sub">${this.recentEndedSession.name} · ${this.recentEndedSession.session.duration} min</div>
+                <div class="draft-sub">
+                  ${this.hhmm(new Date(this.recentEndedSession.session.start))} →
+                  ${this.hhmm(new Date(this.recentEndedSession.session.end))}
+                </div>
                 <div class="draft-row">
                   <input
                     class="draft-note-input"
