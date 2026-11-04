@@ -2,7 +2,7 @@ import { LitElement, html, css } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { Instrument, Session, AppSettings, RangeScope } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
-import { calculateBenchStats, BenchDataCalculations, BENCH_ICONS } from '../../utils/bench-metrics';
+import { calculateBenchStats, BenchDataCalculations } from '../../utils/bench-metrics';
 
 @customElement('pt-insights-view')
 export class PtInsightsView extends LitElement {
@@ -13,7 +13,6 @@ export class PtInsightsView extends LitElement {
 
   @state() private range: RangeScope = 'week';
   @state() private mutedInstruments: Record<string, boolean> = {};
-  @state() private activeMsId: string | null = null;
 
   static styles = [
     commonStyles,
@@ -29,16 +28,15 @@ export class PtInsightsView extends LitElement {
       .wrap {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
       }
 
       .range-bar {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 16px;
+        gap: 12px;
         flex-wrap: wrap;
-        padding: 4px 2px;
       }
 
       .range-tabs {
@@ -46,7 +44,7 @@ export class PtInsightsView extends LitElement {
         background: var(--card);
         border-radius: 999px;
         padding: 4px;
-        gap: 4px;
+        gap: 2px;
       }
 
       .range-tab-btn {
@@ -54,11 +52,12 @@ export class PtInsightsView extends LitElement {
         border-radius: 999px;
         font-family: 'Gabarito', sans-serif;
         font-size: 12.5px;
-        font-weight: 700;
+        font-weight: 800;
         cursor: pointer;
         border: none;
         background: transparent;
         color: var(--muted);
+        transition: background-color 160ms ease-out, color 160ms ease-out;
       }
 
       .range-tab-btn.active {
@@ -67,12 +66,16 @@ export class PtInsightsView extends LitElement {
       }
 
       .scope-summary {
-        font-size: 12px;
+        font-size: 12.5px;
         color: var(--muted);
       }
 
       .scope-summary strong {
         color: var(--ink);
+      }
+
+      .scope-summary .delta {
+        font-weight: 800;
       }
 
       .grid {
@@ -109,7 +112,6 @@ export class PtInsightsView extends LitElement {
         justify-content: space-between;
         align-items: baseline;
         gap: 10px;
-        margin-bottom: 12px;
       }
 
       .card-label {
@@ -119,8 +121,8 @@ export class PtInsightsView extends LitElement {
       }
 
       .card-sub-label {
-        font-size: 12px;
-        color: var(--muted);
+        font-size: 11.5px;
+        color: var(--dim);
       }
 
       /* Day streak */
@@ -128,14 +130,15 @@ export class PtInsightsView extends LitElement {
         display: flex;
         align-items: flex-end;
         justify-content: space-between;
-        gap: 16px;
+        gap: 14px;
+        margin-top: 6px;
       }
 
       .streak-num {
         font-family: 'Gabarito', sans-serif;
-        font-size: 62px;
+        font-size: 64px;
         font-weight: 900;
-        letter-spacing: -0.03em;
+        letter-spacing: -0.05em;
         line-height: 0.9;
       }
 
@@ -143,37 +146,35 @@ export class PtInsightsView extends LitElement {
         font-size: 13px;
         color: var(--muted);
         text-align: right;
-        max-width: 18ch;
-        line-height: 1.3;
+        max-width: 20ch;
+        line-height: 1.35;
       }
 
       .bars-14 {
         display: flex;
-        gap: 5px;
-        margin-top: 18px;
-      }
-
-      .bar-14-col {
-        flex: 1;
-        height: 30px;
-        display: flex;
-        flex-direction: column;
-        justify-content: flex-end;
-        align-items: center;
         gap: 4px;
+        margin-top: 16px;
+        height: 34px;
+        align-items: flex-end;
       }
 
       .bar-14-fill {
-        width: 100%;
-        border-radius: 3px;
+        flex: 1;
+        border-radius: 6px;
         transition: height 300ms ease;
       }
 
       /* Lifetime ring */
+      .lifetime-label {
+        font-size: 12px;
+        font-weight: 800;
+        color: var(--muted);
+      }
+
       .banked-body {
         display: flex;
         align-items: center;
-        gap: 16px;
+        gap: 18px;
       }
 
       .ring-wrap {
@@ -194,32 +195,39 @@ export class PtInsightsView extends LitElement {
 
       .ring-life-num {
         font-family: 'Gabarito', sans-serif;
-        font-size: 22px;
-        font-weight: 800;
+        font-size: 28px;
+        font-weight: 900;
+        line-height: 1;
       }
 
       .ring-life-tag {
-        font-size: 9px;
-        letter-spacing: 0.08em;
+        font-size: 10px;
+        font-weight: 800;
         color: var(--muted);
+        margin-top: 2px;
       }
 
       .banked-info-title {
-        font-size: 14px;
-        font-weight: 700;
+        font-family: 'Gabarito', sans-serif;
+        font-size: 21px;
+        font-weight: 800;
+        margin-top: 6px;
+        line-height: 1.2;
       }
 
       .banked-info-sub {
-        font-size: 12px;
+        font-size: 12.5px;
         color: var(--muted);
-        margin-top: 4px;
+        margin-top: 6px;
+        line-height: 1.45;
       }
 
       /* One session away */
       .one-away-grid {
         display: grid;
         grid-template-columns: repeat(3, minmax(0, 1fr));
-        gap: 12px;
+        gap: 10px;
+        margin-top: 12px;
       }
 
       @media (max-width: 640px) {
@@ -229,17 +237,22 @@ export class PtInsightsView extends LitElement {
       }
 
       .one-away-item {
-        background: var(--raised);
-        border-radius: 16px;
-        padding: 12px;
+        background: var(--bg);
+        border-radius: 20px;
+        padding: 16px;
         cursor: pointer;
+        border: 2px solid transparent;
+        transition: border-color 160ms ease-out;
+      }
+
+      .one-away-item:hover {
+        border-color: var(--accent);
       }
 
       .one-away-top {
         display: flex;
-        justify-content: space-between;
         align-items: baseline;
-        gap: 8px;
+        gap: 10px;
       }
 
       .one-away-big {
@@ -266,47 +279,49 @@ export class PtInsightsView extends LitElement {
         display: flex;
         align-items: flex-end;
         gap: 4px;
-        height: 140px;
+        height: 150px;
+        margin-top: 14px;
       }
 
       .stacked-bar-col {
         flex: 1;
+        min-width: 0;
         display: flex;
         flex-direction: column-reverse;
         height: 100%;
-        border-radius: 3px;
-        overflow: hidden;
+        gap: 2px;
       }
 
       .stacked-segment {
+        display: block;
         width: 100%;
+        border-radius: 6px;
         transition: height 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
       }
 
       .stacked-labels-row {
         display: flex;
         gap: 4px;
-        margin-top: 6px;
+        margin-top: 8px;
       }
 
       .stacked-label-item {
         flex: 1;
+        min-width: 0;
         text-align: center;
         font-size: 10px;
-        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
       }
 
-      /* Heatmap — scrolls horizontally within its card rather than
-         overflowing the page when there are more weeks than fit. */
       .heatmap-grid {
         display: grid;
+        grid-template-rows: repeat(7, auto);
         grid-auto-flow: column;
-        grid-template-rows: repeat(7, 1fr);
+        grid-auto-columns: minmax(0, 1fr);
         gap: 3px;
+        margin-top: 12px;
         max-width: 1100px;
-        overflow-x: auto;
-        overflow-y: hidden;
-        padding-bottom: 2px;
       }
 
       @media (max-width: 859px) {
@@ -316,17 +331,8 @@ export class PtInsightsView extends LitElement {
       }
 
       .heat-cell {
-        width: 11px;
-        height: 11px;
-        border-radius: 3px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-
-      .heat-cell svg {
-        width: 8px;
-        height: 8px;
+        aspect-ratio: 1;
+        border-radius: 4px;
       }
 
       .heat-months-row {
@@ -337,75 +343,58 @@ export class PtInsightsView extends LitElement {
         color: var(--muted);
       }
 
-      .ms-preview-banner {
+      .heat-legend-row {
         display: flex;
         align-items: center;
-        gap: 12px;
-        margin-top: 14px;
-        padding: 12px;
-        background: var(--raised);
-        border-radius: 14px;
+        gap: 5px;
+        margin-top: 12px;
+        font-size: 11px;
+        color: var(--dim);
       }
 
-      .ms-badge-icon {
-        width: 34px;
-        height: 34px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-      }
-
-      .ms-legend-wrap {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-      }
-
-      .ms-legend-pill {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        border-radius: 999px;
-        padding: 5px 10px;
-        cursor: pointer;
-      }
-
-      .ms-legend-icon-mini {
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+      .heat-legend-swatch {
+        width: 11px;
+        height: 11px;
+        border-radius: 3px;
       }
 
       /* Week vs median */
       .pace-head {
         display: flex;
         align-items: baseline;
-        gap: 9px;
+        gap: 8px;
+        margin-top: 6px;
       }
 
       .pace-num {
         font-family: 'Gabarito', sans-serif;
         font-size: 34px;
         font-weight: 900;
+        letter-spacing: -0.03em;
       }
 
       .pace-svg-box {
         width: 100%;
         height: 90px;
         margin-top: 8px;
+        overflow: visible;
+      }
+
+      .pace-ticks-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 10px;
+        color: var(--dim);
+        margin-top: 4px;
       }
 
       /* Day-of-week averages / histogram (shared bar layout) */
       .dow-bars-box {
         display: flex;
         align-items: flex-end;
-        gap: 6px;
-        height: 90px;
+        gap: 8px;
+        height: 110px;
+        margin-top: 12px;
       }
 
       .dow-col {
@@ -414,19 +403,19 @@ export class PtInsightsView extends LitElement {
         flex-direction: column;
         align-items: center;
         justify-content: flex-end;
-        gap: 4px;
+        gap: 6px;
         height: 100%;
       }
 
       .dow-bar-fill {
         width: 100%;
-        border-radius: 3px 3px 0 0;
+        border-radius: 10px;
       }
 
       .caption-text {
         font-size: 12.5px;
         color: var(--muted);
-        margin-top: 12px;
+        margin-top: 10px;
         line-height: 1.45;
       }
 
@@ -434,7 +423,14 @@ export class PtInsightsView extends LitElement {
       .records-grid {
         display: grid;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 14px 16px;
+        gap: 14px;
+        margin-top: 12px;
+      }
+
+      .record-card {
+        background: var(--bg);
+        border-radius: 18px;
+        padding: 12px 14px;
       }
 
       .record-k {
@@ -447,45 +443,54 @@ export class PtInsightsView extends LitElement {
       }
 
       .record-new-pill {
-        font-size: 9px;
-        font-weight: 800;
+        font-size: 9.5px;
+        font-weight: 900;
         background: var(--accent);
         color: var(--bg);
-        border-radius: 6px;
-        padding: 2px 5px;
+        border-radius: 999px;
+        padding: 2px 7px;
       }
 
       .record-v {
         font-family: 'Gabarito', sans-serif;
         font-size: 22px;
         font-weight: 900;
-        margin-top: 2px;
+        margin-top: 4px;
       }
 
       .record-sub {
-        font-size: 11px;
-        color: var(--muted);
+        font-size: 11.5px;
+        color: var(--dim);
+        margin-top: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       /* Kit share */
       .kit-share-list {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 4px;
+        margin-top: 10px;
       }
 
       .kit-share-row {
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
+        background: var(--bg);
+        border-radius: 18px;
+        padding: 10px 14px;
         cursor: pointer;
+        transition: opacity 200ms ease-out;
       }
 
       .kit-share-progress-track {
-        height: 5px;
+        height: 6px;
         border-radius: 999px;
-        background: var(--raised);
-        margin-top: 4px;
+        background: var(--card);
+        margin-top: 6px;
         overflow: hidden;
       }
 
@@ -497,24 +502,26 @@ export class PtInsightsView extends LitElement {
       /* Rhythm curve */
       .rhythm-wrap {
         position: relative;
+        margin-top: 12px;
       }
 
       .rhythm-now-dot {
         position: absolute;
-        width: 8px;
-        height: 8px;
+        width: 10px;
+        height: 10px;
+        margin: -5px 0 0 -5px;
         border-radius: 50%;
         background: var(--accent);
-        transform: translate(-50%, -50%);
-        animation: softPulse 1.6s ease-in-out infinite;
+        box-shadow: 0 0 0 5px rgba(255, 122, 92, 0.22);
+        animation: softPulse 2.4s ease-in-out infinite;
       }
 
       .rhythm-ticks {
         display: flex;
         justify-content: space-between;
         margin-top: 6px;
-        font-size: 10px;
-        color: var(--muted);
+        font-size: 10.5px;
+        color: var(--dim);
       }
 
       /* Notes themes */
@@ -527,10 +534,10 @@ export class PtInsightsView extends LitElement {
       .theme-pill {
         display: flex;
         align-items: center;
-        gap: 6px;
-        background: var(--raised);
+        gap: 8px;
+        background: var(--bg);
         border-radius: 999px;
-        padding: 7px 12px;
+        padding: 9px 15px;
       }
     `,
   ];
@@ -547,19 +554,6 @@ export class PtInsightsView extends LitElement {
       weeklyGoalMinutes: this.settings.weeklyGoalMinutes,
     });
 
-    const activeMs = stats.milestones.find((m) => m.id === this.activeMsId);
-    const msCaptionTitle = activeMs
-      ? activeMs.title
-      : `${stats.milestones.filter((m) => m.done && m.when > 0).length} milestones sit on the calendar above`;
-    const msCaptionDetail = activeMs
-      ? activeMs.done
-        ? `${activeMs.detail}${activeMs.dateLabel ? ` · ${activeMs.dateLabel}` : ''}`
-        : `${activeMs.detail} · ${activeMs.pctLabel} of the way`
-      : 'Hover a marked day, or any icon here, to see what it was for.';
-    const msCaptionIcon = activeMs ? activeMs.icon : BENCH_ICONS.star;
-    const msCaptionBg = activeMs ? (activeMs.done ? activeMs.accent : 'var(--raised)') : 'var(--raised)';
-    const msCaptionStroke = activeMs ? (activeMs.done ? 'var(--bg)' : 'var(--muted)') : 'var(--muted)';
-
     return html`
       <div class="wrap">
         <div class="range-bar">
@@ -574,52 +568,38 @@ export class PtInsightsView extends LitElement {
           </div>
           <div class="scope-summary">
             ${stats.scopeCaption} · <strong>${stats.scopeTotal}</strong> ·
-            <span style="color:${stats.scopeDeltaColor};font-weight:700">${stats.scopeDelta}</span>
+            <span class="delta" style="color:${stats.scopeDeltaColor}">${stats.scopeDelta}</span>
           </div>
         </div>
 
         <div class="grid">
           <!-- 1. Day streak -->
           <div class="card card-half">
-            <div class="card-header">
-              <span class="card-label">Day streak</span>
-              <span class="card-sub-label">best ${stats.bestStreak}d</span>
-            </div>
+            <span class="card-label">Day streak</span>
             <div class="streak-row">
               <div class="streak-num">${stats.streak}</div>
               <div class="streak-quip">${stats.quip}</div>
             </div>
             <div class="bars-14">
-              ${stats.last14.map(
-                (d) => html`
-                  <div class="bar-14-col">
-                    <div class="bar-14-fill" style="height:${d.h}%;background:${d.bg}"></div>
-                    <span style="font-size:9.5px;color:${d.labelColor};font-weight:${d.isToday ? 700 : 500}">${d.label}</span>
-                  </div>
-                `
-              )}
+              ${stats.last14.map((d) => html`<div class="bar-14-fill" style="height:${d.h}%;background:${d.bg}"></div>`)}
             </div>
           </div>
 
           <!-- 2. Lifetime hours -->
           <div class="card card-half">
-            <div class="card-header">
-              <span class="card-label">Every hour you have logged</span>
-              <span class="card-sub-label">${stats.nextMile} goal</span>
-            </div>
             <div class="banked-body">
               <div class="ring-wrap">
                 <svg viewBox="0 0 118 118" style="width:100%;height:100%;transform:rotate(-90deg)">
                   <circle cx="59" cy="59" r="52" fill="none" stroke="var(--bg)" stroke-width="10"></circle>
                   <circle cx="59" cy="59" r="52" fill="none" stroke="var(--accent)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${stats.ringDash}"></circle>
-                  <circle cx="${stats.capX}" cy="${stats.capY}" r="5" fill="var(--accent)" opacity="0.3" style="transform-box:fill-box;transform-origin:center;animation:halo 6s ease-out infinite"></circle>
                 </svg>
                 <div class="ring-center">
                   <div class="ring-life-num">${stats.lifeHours}</div>
-                  <div class="ring-life-tag">ALL TIME</div>
+                  <div class="ring-life-tag">all time</div>
                 </div>
               </div>
               <div style="min-width:0">
+                <div class="lifetime-label">Every hour you have logged</div>
                 <div class="banked-info-title">${stats.mileGap} to ${stats.nextMile}</div>
                 <div class="banked-info-sub">${stats.lifeSub}</div>
               </div>
@@ -639,8 +619,8 @@ export class PtInsightsView extends LitElement {
                     <div class="one-away-top">
                       <div class="one-away-big">${o.big}</div>
                       <div class="one-away-inst">
-                        <span style="width:7px;height:7px;border-radius:50%;background:${o.instColor}"></span>
-                        <span style="font-size:13px;font-weight:700">${o.instName}</span>
+                        <span style="width:8px;height:8px;border-radius:50%;background:${o.instColor};flex-shrink:0"></span>
+                        <span style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${o.instName}</span>
                       </div>
                     </div>
                     <div class="one-away-desc">${o.text}</div>
@@ -677,54 +657,16 @@ export class PtInsightsView extends LitElement {
               <span class="card-sub-label">${stats.heatSince}</span>
             </div>
             <div class="heatmap-grid">
-              ${stats.heatMarked.map(
-                (c) => html`
-                  <div
-                    class="heat-cell"
-                    style="background:${c.bg};opacity:${c.op};outline:${c.ring};outline-offset:1px;animation:${c.anim};cursor:${c.cursor}"
-                    @mouseenter=${() => { if (c.milestoneId) this.activeMsId = c.milestoneId; }}
-                    @mouseleave=${() => { if (this.activeMsId === c.milestoneId) this.activeMsId = null; }}
-                    @click=${() => { if (c.milestoneId) this.activeMsId = this.activeMsId === c.milestoneId ? null : c.milestoneId; }}
-                  >
-                    ${c.mark ? html`<svg viewBox="0 0 24 24" fill="none" stroke="${c.markStroke}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="${c.icon}"></path></svg>` : ''}
-                  </div>
-                `
-              )}
+              ${stats.heatMarked.map((c) => html`<div class="heat-cell" style="background:${c.bg};opacity:${c.op};outline:${c.ring};outline-offset:1px;animation:${c.anim}"></div>`)}
             </div>
-            <div class="heat-months-row">${stats.heatMonths.map((m) => html`<div>${m.label}</div>`)}</div>
-
-            <div class="ms-preview-banner">
-              <div class="ms-badge-icon" style="background:${msCaptionBg}">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="${msCaptionStroke}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${msCaptionIcon}"></path></svg>
-              </div>
-              <div style="min-width:0">
-                <div style="font-size:14px;font-weight:700">${msCaptionTitle}</div>
-                <div style="font-size:12px;color:var(--muted);margin-top:3px">${msCaptionDetail}</div>
-              </div>
-            </div>
-
-            <div class="card-header" style="margin-top:16px;margin-bottom:6px">
-              <span class="card-label">Milestones</span>
-              <span class="card-sub-label">${stats.msCount}</span>
-            </div>
-            <div class="ms-legend-wrap">
-              ${stats.milestones.map(
-                (m) => html`
-                  <div
-                    class="ms-legend-pill"
-                    style="border:1px solid ${this.activeMsId === m.id ? 'var(--ink)' : m.done ? m.accent + '66' : 'var(--line)'};background:${this.activeMsId === m.id ? 'var(--raised)' : 'transparent'}"
-                    @mouseenter=${() => (this.activeMsId = m.id)}
-                    @mouseleave=${() => { if (this.activeMsId === m.id) this.activeMsId = null; }}
-                    @click=${() => (this.activeMsId = this.activeMsId === m.id ? null : m.id)}
-                  >
-                    <span class="ms-legend-icon-mini" style="background:${m.done ? m.accent : 'var(--raised)'}">
-                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="${m.done ? 'var(--bg)' : 'var(--muted)'}" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><path d="${m.icon}"></path></svg>
-                    </span>
-                    <span style="font-size:11px;font-weight:700;color:${m.done ? 'var(--ink)' : 'var(--muted)'}">${m.title}</span>
-                    <span style="font-size:10px;color:var(--muted)">${m.done ? m.dateLabel || 'cleared' : m.pctLabel}</span>
-                  </div>
-                `
-              )}
+            <div class="heat-legend-row">
+              <span>less</span>
+              <span class="heat-legend-swatch" style="background:#33233C"></span>
+              <span class="heat-legend-swatch" style="background:var(--line)"></span>
+              <span class="heat-legend-swatch" style="background:#7D5E99"></span>
+              <span class="heat-legend-swatch" style="background:#9C78BE"></span>
+              <span class="heat-legend-swatch" style="background:var(--chart)"></span>
+              <span>more</span>
             </div>
           </div>
 
@@ -732,24 +674,22 @@ export class PtInsightsView extends LitElement {
           <div class="card card-half">
             <div class="card-header">
               <span class="card-label">This week vs your median</span>
-              <span style="font-size:11.5px;font-weight:700;color:${stats.paceColor}">${stats.paceDelta}</span>
+              <span style="font-size:12px;font-weight:800;color:${stats.paceColor}">${stats.paceDelta}</span>
             </div>
             <div class="pace-head">
               <div class="pace-num">${stats.weekTotal}</div>
-              <div style="font-size:13px;color:var(--muted)">of ${stats.goalLabel} goal</div>
+              <div style="font-size:12.5px;color:var(--muted)">since Monday</div>
             </div>
             <svg viewBox="0 0 320 90" class="pace-svg-box" preserveAspectRatio="none">
-              <polyline points="${stats.medianPts}" fill="none" stroke="var(--line)" stroke-width="2" stroke-dasharray="5 5" stroke-linecap="round"></polyline>
-              <polyline points="${stats.actualPts}" fill="none" stroke="var(--accent)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"></polyline>
+              <polyline points="${stats.medianPts}" fill="none" stroke="var(--line)" stroke-width="2.5" stroke-dasharray="5 6" stroke-linecap="round"></polyline>
+              <polyline points="${stats.actualPts}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></polyline>
             </svg>
+            <div class="pace-ticks-row"><span>Mon</span><span>Wed</span><span>Fri</span><span>Sun</span></div>
           </div>
 
           <!-- 7. Day-of-week averages -->
           <div class="card card-half">
-            <div class="card-header">
-              <span class="card-label">Your week, averaged</span>
-              <span class="card-sub-label">fingerprint</span>
-            </div>
+            <span class="card-label">Your week, averaged</span>
             <div class="dow-bars-box">
               ${stats.dow.map(
                 (d) => html`
@@ -773,7 +713,7 @@ export class PtInsightsView extends LitElement {
             <div class="records-grid">
               ${stats.records.map(
                 (r) => html`
-                  <div>
+                  <div class="record-card">
                     <div class="record-k">
                       <span>${r.k}</span>
                       ${r.fresh ? html`<span class="record-new-pill">new</span>` : ''}
@@ -784,16 +724,12 @@ export class PtInsightsView extends LitElement {
                 `
               )}
             </div>
-            <div class="caption-text">${stats.freshLine}</div>
           </div>
 
           <!-- 9. Session-length histogram -->
           <div class="card card-half">
-            <div class="card-header">
-              <span class="card-label">How long you actually play</span>
-              <span class="card-sub-label">distribution</span>
-            </div>
-            <div class="dow-bars-box">
+            <span class="card-label">How long you actually play</span>
+            <div class="dow-bars-box" style="gap:10px">
               ${stats.hist.map(
                 (b) => html`
                   <div class="dow-col">
@@ -817,18 +753,18 @@ export class PtInsightsView extends LitElement {
               ${stats.instRows.map(
                 (r) => html`
                   <div class="kit-share-row" style="opacity:${r.opacity}" @click=${() => this.toggleMute(r.id)} title="${r.isMuted ? 'Unmute' : 'Mute'} ${r.name}">
-                    <span style="width:7px;height:7px;border-radius:50%;background:${r.color};flex-shrink:0"></span>
+                    <span style="width:9px;height:9px;border-radius:50%;background:${r.color};flex-shrink:0"></span>
                     <div style="flex:1;min-width:0">
                       <div style="display:flex;justify-content:space-between;gap:8px">
-                        <span style="font-size:12.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</span>
-                        <span style="font-size:11.5px;color:var(--muted);flex-shrink:0">${r.minsLabel} · ${r.shareLabel}</span>
+                        <span style="font-size:13px;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${r.name}</span>
+                        <span style="font-size:12px;color:var(--muted);flex-shrink:0">${r.minsLabel} · ${r.shareLabel}</span>
                       </div>
                       <div class="kit-share-progress-track">
                         <span class="kit-share-progress-fill" style="width:${r.sharePct}%;background:${r.color}"></span>
                       </div>
                     </div>
                     <svg width="60" height="24" viewBox="0 0 100 34" preserveAspectRatio="none" style="flex-shrink:0;overflow:visible">
-                      <polyline points="${r.spark}" fill="none" stroke="${r.color}" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.85"></polyline>
+                      <polyline points="${r.spark}" fill="none" stroke="${r.color}" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"></polyline>
                     </svg>
                   </div>
                 `
@@ -838,47 +774,39 @@ export class PtInsightsView extends LitElement {
 
           <!-- 11. Hour-of-day rhythm -->
           <div class="card card-full">
-            <div class="card-header">
+            <div class="card-header" style="flex-wrap:wrap">
               <span class="card-label">Your day, by the hour</span>
               <div style="font-size:12px;color:var(--muted)">
-                <strong style="color:var(--ink)">${stats.windowShare}</strong> of every minute falls between ${stats.windowLabel}
+                <strong style="color:var(--ink)">${stats.windowShare}</strong> of your time falls between ${stats.windowLabel}
               </div>
             </div>
             <div class="rhythm-wrap">
               <svg viewBox="0 0 720 124" preserveAspectRatio="none" style="width:100%;height:124px;display:block">
-                <defs>
-                  <linearGradient id="rhythmFill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stop-color="var(--chart)" stop-opacity="0.34"></stop>
-                    <stop offset="100%" stop-color="var(--chart)" stop-opacity="0.03"></stop>
-                  </linearGradient>
-                </defs>
-                <rect x="${stats.bandX}" y="0" width="${stats.bandW}" height="124" fill="var(--accent)" opacity="0.14" rx="7"></rect>
-                <path d="${stats.dayArea}" fill="url(#rhythmFill)"></path>
-                <path d="${stats.dayCurve}" fill="none" stroke="var(--chart)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+                <rect x="${stats.bandX}" y="0" width="${stats.bandW}" height="124" fill="var(--accent)" opacity="0.14" rx="10"></rect>
+                <path d="${stats.dayArea}" fill="var(--chart)" opacity="0.22"></path>
+                <path d="${stats.dayCurve}" fill="none" stroke="var(--chart)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path>
               </svg>
-              <div class="rhythm-now-dot" style="left:${stats.nowLeft};top:${stats.nowTop};position:absolute"></div>
+              <div class="rhythm-now-dot" style="left:${stats.nowLeft};top:${stats.nowTop}"></div>
             </div>
             <div class="rhythm-ticks">${stats.dayTicks.map((t) => html`<div>${t.label}</div>`)}</div>
           </div>
 
           <!-- 12. Notes themes -->
           <div class="card card-full">
-            <div class="card-header">
-              <span class="card-label">From your notes · what you've been working on</span>
-              <span class="card-sub-label">recent tags</span>
-            </div>
-            <div class="themes-cloud">
-              ${stats.themes.length > 0
-                ? stats.themes.map(
-                    (t) => html`
-                      <div class="theme-pill">
-                        <span style="width:6px;height:6px;border-radius:50%;background:${t.color}"></span>
-                        <span style="font-size:${t.size};font-weight:700">${t.name}</span>
-                        <span style="font-size:11px;color:var(--muted)">${t.mins} · ${t.ago}</span>
-                      </div>
-                    `
-                  )
-                : html`<div style="font-size:13px;color:var(--muted)">Add notes when you save a session and the recurring ones collect here.</div>`}
+            <span class="card-label">From your notes · what you’ve been working on</span>
+            ${stats.themes.length === 0
+              ? html`<div style="font-size:13px;color:var(--dim);margin-top:10px">Add notes when you save a session and the recurring ones collect here.</div>`
+              : ''}
+            <div class="themes-cloud" style="margin-top:12px">
+              ${stats.themes.map(
+                (t) => html`
+                  <div class="theme-pill">
+                    <span style="width:8px;height:8px;border-radius:50%;background:${t.color};flex-shrink:0"></span>
+                    <span style="font-family:'Gabarito',sans-serif;font-weight:800;font-size:${t.size};white-space:nowrap">${t.name}</span>
+                    <span style="font-size:11px;color:var(--dim);white-space:nowrap">${t.mins} · ${t.ago}</span>
+                  </div>
+                `
+              )}
             </div>
           </div>
         </div>
