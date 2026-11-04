@@ -604,31 +604,31 @@ ${w}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
             </div>
           </div>
 
-          <div class="tiles-grid">
-            ${t.nextUp.queue.filter(u=>u.id!==t.nextUp.selectedId).map(u=>{const h=this.instruments.find(f=>f.id===u.id)||null;return b`
-                  <div class="tile" @click=${()=>this.selectedRetargetId=u.id}>
-                    <div class="tile-glyph-box">
-                      <div class="tile-glyph-scale">
-                        <pt-glyph .kind=${_s(h)} .live=${!1}></pt-glyph>
+          <div class="right-col">
+            <div class="tiles-grid">
+              ${t.nextUp.queue.filter(u=>u.id!==t.nextUp.selectedId).map(u=>{const h=this.instruments.find(f=>f.id===u.id)||null;return b`
+                    <div class="tile" @click=${()=>this.selectedRetargetId=u.id}>
+                      <div class="tile-glyph-box">
+                        <div class="tile-glyph-scale">
+                          <pt-glyph .kind=${_s(h)} .live=${!1}></pt-glyph>
+                        </div>
                       </div>
-                    </div>
-                    <div class="tile-info">
-                      <div class="tile-name-row">
-                        <span class="tile-dot" style="background:${u.color}"></span>
-                        <span class="tile-name">${u.name}</span>
+                      <div class="tile-info">
+                        <div class="tile-name-row">
+                          <span class="tile-dot" style="background:${u.color}"></span>
+                          <span class="tile-name">${u.name}</span>
+                        </div>
+                        <div class="tile-sub">${u.ago}</div>
                       </div>
-                      <div class="tile-sub">${u.ago}</div>
+                      <button
+                        class="tile-play-btn"
+                        @click=${f=>{f.stopPropagation(),this.handleStart(u.id)}}
+                      >
+                        <span class="play-triangle tile-play-triangle"></span>
+                      </button>
                     </div>
-                    <button
-                      class="tile-play-btn"
-                      @click=${f=>{f.stopPropagation(),this.handleStart(u.id)}}
-                    >
-                      <span class="play-triangle tile-play-triangle"></span>
-                    </button>
-                  </div>
-                `})}
-          </div>
-        </div>
+                  `})}
+            </div>
 
         <div class="summary-card">
           <div class="summary-header">
@@ -654,6 +654,8 @@ ${w}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
               <div class="progress-fill" style="width:${c}%"></div>
             </div>
             <div class="progress-caption">${z(o)} of ${z(l)} this week</div>
+          </div>
+        </div>
           </div>
         </div>
 
@@ -899,6 +901,16 @@ ${w}`}class K extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
 
       .back-to-suggestion:hover {
         color: var(--accent);
+      }
+
+      /* Right column: tiles grid + Today summary card, stacked — NOT a
+         sibling of .top-grid. The summary card is only as wide as this
+         column (matches the tiles above it), not the full page width. */
+      .right-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
       }
 
       /* Other instrument tiles — 2 columns, except the 860–1039px "wide but

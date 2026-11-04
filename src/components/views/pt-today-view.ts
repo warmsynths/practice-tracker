@@ -198,6 +198,16 @@ export class PtTodayView extends LitElement {
         color: var(--accent);
       }
 
+      /* Right column: tiles grid + Today summary card, stacked — NOT a
+         sibling of .top-grid. The summary card is only as wide as this
+         column (matches the tiles above it), not the full page width. */
+      .right-col {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        min-width: 0;
+      }
+
       /* Other instrument tiles — 2 columns, except the 860–1039px "wide but
          narrower than 1040" zone where the sidebar-width second grid track
          is too tight for 2 tiles, so it drops to 1 column there only. */
@@ -630,39 +640,39 @@ export class PtTodayView extends LitElement {
             </div>
           </div>
 
-          <div class="tiles-grid">
-            ${stats.nextUp.queue
-              .filter((q) => q.id !== stats.nextUp.selectedId)
-              .map((q) => {
-                const inst = this.instruments.find((i) => i.id === q.id) || null;
-                return html`
-                  <div class="tile" @click=${() => (this.selectedRetargetId = q.id)}>
-                    <div class="tile-glyph-box">
-                      <div class="tile-glyph-scale">
-                        <pt-glyph .kind=${glyphKindFor(inst)} .live=${false}></pt-glyph>
+          <div class="right-col">
+            <div class="tiles-grid">
+              ${stats.nextUp.queue
+                .filter((q) => q.id !== stats.nextUp.selectedId)
+                .map((q) => {
+                  const inst = this.instruments.find((i) => i.id === q.id) || null;
+                  return html`
+                    <div class="tile" @click=${() => (this.selectedRetargetId = q.id)}>
+                      <div class="tile-glyph-box">
+                        <div class="tile-glyph-scale">
+                          <pt-glyph .kind=${glyphKindFor(inst)} .live=${false}></pt-glyph>
+                        </div>
                       </div>
-                    </div>
-                    <div class="tile-info">
-                      <div class="tile-name-row">
-                        <span class="tile-dot" style="background:${q.color}"></span>
-                        <span class="tile-name">${q.name}</span>
+                      <div class="tile-info">
+                        <div class="tile-name-row">
+                          <span class="tile-dot" style="background:${q.color}"></span>
+                          <span class="tile-name">${q.name}</span>
+                        </div>
+                        <div class="tile-sub">${q.ago}</div>
                       </div>
-                      <div class="tile-sub">${q.ago}</div>
+                      <button
+                        class="tile-play-btn"
+                        @click=${(e: Event) => {
+                          e.stopPropagation();
+                          this.handleStart(q.id);
+                        }}
+                      >
+                        <span class="play-triangle tile-play-triangle"></span>
+                      </button>
                     </div>
-                    <button
-                      class="tile-play-btn"
-                      @click=${(e: Event) => {
-                        e.stopPropagation();
-                        this.handleStart(q.id);
-                      }}
-                    >
-                      <span class="play-triangle tile-play-triangle"></span>
-                    </button>
-                  </div>
-                `;
-              })}
-          </div>
-        </div>
+                  `;
+                })}
+            </div>
 
         <div class="summary-card">
           <div class="summary-header">
@@ -693,6 +703,8 @@ export class PtTodayView extends LitElement {
               <div class="progress-fill" style="width:${weekPct}%"></div>
             </div>
             <div class="progress-caption">${fmtMin(weekSoFar)} of ${fmtMin(goal)} this week</div>
+          </div>
+        </div>
           </div>
         </div>
 
