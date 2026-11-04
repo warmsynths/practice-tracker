@@ -71,7 +71,7 @@ export class PtTodayView extends LitElement {
       .hero-info {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 6px;
         min-width: 0;
         flex: 1;
       }
@@ -105,13 +105,11 @@ export class PtTodayView extends LitElement {
       .hero-tag {
         display: inline-flex;
         align-self: flex-start;
-        background: var(--raised);
+        background: var(--bg);
         border-radius: 999px;
-        padding: 6px 12px;
+        padding: 5px 10px;
         font-size: 11.5px;
         font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
       }
 
       .hero-name {
@@ -119,6 +117,7 @@ export class PtTodayView extends LitElement {
         font-weight: 800;
         font-size: 28px;
         letter-spacing: -0.02em;
+        line-height: 1.05;
       }
 
       @media (max-width: 859px) {
@@ -130,7 +129,7 @@ export class PtTodayView extends LitElement {
       .hero-reason {
         font-size: 13px;
         color: var(--muted);
-        line-height: 1.4;
+        line-height: 1.45;
       }
 
       .hero-spacer {
@@ -144,7 +143,7 @@ export class PtTodayView extends LitElement {
         background: var(--accent);
         color: var(--bg);
         font-family: 'Gabarito', sans-serif;
-        font-size: 15px;
+        font-size: 17px;
         font-weight: 800;
         display: flex;
         align-items: center;
@@ -188,10 +187,11 @@ export class PtTodayView extends LitElement {
         background: transparent;
         border: none;
         color: var(--muted);
-        font-size: 12.5px;
-        text-decoration: underline;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: center;
         cursor: pointer;
-        align-self: center;
+        padding: 6px;
       }
 
       .back-to-suggestion:hover {
@@ -219,15 +219,21 @@ export class PtTodayView extends LitElement {
         padding: 10px;
         display: flex;
         align-items: center;
-        gap: 10px;
+        gap: 12px;
         cursor: pointer;
+        border: 2px solid transparent;
+        transition: border-color 160ms ease-out;
+      }
+
+      .tile:hover {
+        border-color: var(--line);
       }
 
       .tile-glyph-box {
         width: 92px;
         height: 114px;
         overflow: hidden;
-        border-radius: 14px;
+        border-radius: 12px;
         flex-shrink: 0;
       }
 
@@ -252,32 +258,35 @@ export class PtTodayView extends LitElement {
       .tile-info {
         flex: 1;
         min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+      }
+
+      .tile-name-row {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+      }
+
+      .tile-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        flex-shrink: 0;
       }
 
       .tile-name {
         font-family: 'Gabarito', sans-serif;
-        font-size: 14px;
-        font-weight: 700;
+        font-size: 15px;
+        font-weight: 800;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
       }
 
       .tile-sub {
-        font-size: 11.5px;
-        color: var(--muted);
-        margin-top: 2px;
-      }
-
-      .tile-flag {
-        font-size: 10px;
-        font-weight: 800;
-        text-transform: uppercase;
-        padding: 2px 6px;
-        border-radius: 6px;
-        display: inline-block;
-        margin-top: 4px;
-        background: var(--raised);
+        font-size: 12px;
         color: var(--muted);
       }
 
@@ -337,13 +346,13 @@ export class PtTodayView extends LitElement {
       }
 
       .summary-chip-add {
-        border: 1px dashed var(--line);
+        border: 2px dashed var(--line);
         background: transparent;
         color: var(--muted);
         border-radius: 999px;
-        padding: 7px 12px;
-        font-size: 12px;
-        font-weight: 700;
+        padding: 8px 13px;
+        font-size: 12.5px;
+        font-weight: 800;
         cursor: pointer;
       }
 
@@ -356,10 +365,17 @@ export class PtTodayView extends LitElement {
         color: var(--muted);
       }
 
+      .progress-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
       .progress-track {
+        flex: 1;
         height: 8px;
         border-radius: 999px;
-        background: var(--raised);
+        background: var(--bg);
         overflow: hidden;
       }
 
@@ -367,12 +383,14 @@ export class PtTodayView extends LitElement {
         height: 100%;
         border-radius: 999px;
         background: var(--chart);
-        transition: width 400ms cubic-bezier(0.2, 0.8, 0.2, 1);
+        transition: width 400ms ease-out;
       }
 
       .progress-caption {
         font-size: 12px;
+        font-weight: 700;
         color: var(--muted);
+        white-space: nowrap;
       }
 
       /* Quick log drawer */
@@ -392,9 +410,7 @@ export class PtTodayView extends LitElement {
         align-items: center;
         font-size: 12px;
         font-weight: 800;
-        letter-spacing: 0.04em;
         color: var(--muted);
-        text-transform: uppercase;
       }
 
       .quick-log-header button {
@@ -627,9 +643,11 @@ export class PtTodayView extends LitElement {
                       </div>
                     </div>
                     <div class="tile-info">
-                      <div class="tile-name">${q.name}</div>
+                      <div class="tile-name-row">
+                        <span class="tile-dot" style="background:${q.color}"></span>
+                        <span class="tile-name">${q.name}</span>
+                      </div>
                       <div class="tile-sub">${q.ago}</div>
-                      <span class="tile-flag">${q.flag}</span>
                     </div>
                     <button
                       class="tile-play-btn"
@@ -670,10 +688,12 @@ export class PtTodayView extends LitElement {
                 <div class="summary-empty">Nothing yet today.</div>
                 <button class="summary-chip-add" style="align-self:flex-start" @click=${() => this.dispatch('open-manual-log')}>+ past session</button>
               `}
-          <div class="progress-track">
-            <div class="progress-fill" style="width:${weekPct}%"></div>
+          <div class="progress-row">
+            <div class="progress-track">
+              <div class="progress-fill" style="width:${weekPct}%"></div>
+            </div>
+            <div class="progress-caption">${fmtMin(weekSoFar)} of ${fmtMin(goal)} this week</div>
           </div>
-          <div class="progress-caption">${fmtMin(weekSoFar)} of ${fmtMin(goal)} this week</div>
         </div>
 
         ${this.quickLogOpen

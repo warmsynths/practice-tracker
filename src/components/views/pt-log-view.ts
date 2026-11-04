@@ -118,8 +118,6 @@ export class PtLogView extends LitElement {
         font-family: 'Manrope', sans-serif;
         font-size: 10px;
         font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
         color: var(--muted);
       }
 
@@ -239,10 +237,8 @@ export class PtLogView extends LitElement {
 
       .form-section-title {
         font-size: 10.5px;
-        letter-spacing: 0.1em;
         color: var(--muted);
         font-weight: 800;
-        text-transform: uppercase;
       }
 
       .pills-wrap {
@@ -332,10 +328,8 @@ export class PtLogView extends LitElement {
 
       .mini-label {
         font-size: 10.5px;
-        letter-spacing: 0.1em;
         color: var(--muted);
         font-weight: 800;
-        text-transform: uppercase;
       }
 
       .date-time-input {

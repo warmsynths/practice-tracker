@@ -141,10 +141,8 @@ export class PtAuthModal extends LitElement {
       .field-label {
         font-family: 'Manrope', sans-serif;
         font-size: 10.5px;
-        letter-spacing: 0.1em;
         color: var(--muted, #A3A297);
         font-weight: 800;
-        text-transform: uppercase;
       }
 
       .label-row {
@@ -187,7 +185,6 @@ export class PtAuthModal extends LitElement {
       }
 
       .text-input.pw {
-        letter-spacing: 0.08em;
       }
 
       .text-input:focus {
@@ -282,7 +279,6 @@ export class PtAuthModal extends LitElement {
       .or-text {
         font-family: 'Manrope', sans-serif;
         font-size: 10.5px;
-        letter-spacing: 0.1em;
         color: var(--muted, #A3A297);
         font-weight: 700;
       }

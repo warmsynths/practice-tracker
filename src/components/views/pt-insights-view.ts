@@ -113,15 +113,13 @@ export class PtInsightsView extends LitElement {
       }
 
       .card-label {
-        font-size: 9.5px;
-        letter-spacing: 0.1em;
+        font-size: 12px;
         color: var(--muted);
         font-weight: 800;
-        text-transform: uppercase;
       }
 
       .card-sub-label {
-        font-size: 11px;
+        font-size: 12px;
         color: var(--muted);
       }
 
@@ -444,9 +442,8 @@ export class PtInsightsView extends LitElement {
         align-items: center;
         gap: 6px;
         font-size: 11px;
+        font-weight: 800;
         color: var(--muted);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
       }
 
       .record-new-pill {
@@ -779,7 +776,7 @@ export class PtInsightsView extends LitElement {
                   <div>
                     <div class="record-k">
                       <span>${r.k}</span>
-                      ${r.fresh ? html`<span class="record-new-pill">NEW</span>` : ''}
+                      ${r.fresh ? html`<span class="record-new-pill">new</span>` : ''}
                     </div>
                     <div class="record-v">${r.v}</div>
                     <div class="record-sub">${r.sub}</div>
