@@ -534,6 +534,7 @@ export class PtApp extends LitElement {
                         <pt-log-view
                           .instruments=${this.instruments}
                           .sessions=${this.sessions}
+                          @open-manual-log=${() => (this.manualLogModalOpen = true)}
                           @save-manual-session=${this.handleSaveManualSession}
                           @update-session=${this.handleUpdateSession}
                           @delete-session=${this.handleDeleteSession}

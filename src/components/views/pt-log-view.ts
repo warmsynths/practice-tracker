@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { Instrument, Session } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
 import { fmtMin, dayStart, addDays } from '../../utils/bench-metrics';
+import { glyphKindFor } from '../../utils/glyph-utils';
 
 function toLocalDateStr(d: Date): string {
   const y = d.getFullYear();
@@ -17,6 +18,16 @@ function toLocalTimeStr(d: Date): string {
   return `${h}:${min}`;
 }
 
+type RowFamily = 'strings' | 'keys' | 'pads' | 'air';
+
+function familyFor(instrument: Instrument | null | undefined): RowFamily {
+  const kind = glyphKindFor(instrument);
+  if (kind === 'piano') return 'keys';
+  if (kind === 'pads') return 'pads';
+  if (kind === 'wind' || kind === 'voice') return 'air';
+  return 'strings'; // acoustic, electric, bass
+}
+
 const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const DOW_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -25,14 +36,6 @@ const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 export class PtLogView extends LitElement {
   @property({ type: Array }) instruments: Instrument[] = [];
   @property({ type: Array }) sessions: Session[] = [];
-
-  @state() private newOpen: boolean = false;
-  @state() private newInstId: string = '';
-  @state() private newMin: number = 30;
-  @state() private newDayBack: number = 0; // 0=today, 1=yesterday, 2=2d, 3=3d, -1=custom
-  @state() private newDate: string = toLocalDateStr(new Date());
-  @state() private newTime: string = toLocalTimeStr(new Date());
-  @state() private newNote: string = '';
 
   @state() private openRowId: string | null = null;
   @state() private editInstIdDraft: string = '';
@@ -58,28 +61,27 @@ export class PtLogView extends LitElement {
       .log-wrap {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
         width: 100%;
         max-width: 1000px;
         margin: 0 auto;
       }
 
-      /* 7-day strip */
-      .week-strip-card {
+      /* 7-day strip — a bare row, not a card (matches the source exactly:
+         each day cell carries its own background, nothing wraps the row). */
+      .week-strip-row {
         display: flex;
         align-items: center;
-        gap: 14px;
-        background: var(--card);
-        border-radius: 22px;
-        padding: 14px;
+        gap: 12px;
+        flex-wrap: wrap;
       }
 
       .week-strip-grid {
         flex: 1;
+        min-width: 260px;
         display: grid;
         grid-template-columns: repeat(7, minmax(0, 1fr));
         gap: 5px;
-        min-width: 0;
       }
 
       .day-cell {
@@ -87,13 +89,13 @@ export class PtLogView extends LitElement {
         flex-direction: column;
         align-items: center;
         gap: 4px;
-        padding: 8px 2px;
+        padding: 7px 0 8px;
         border-radius: 16px;
         border: 2px solid transparent;
         cursor: pointer;
         user-select: none;
         transition: background-color 160ms ease-out, border-color 160ms ease-out;
-        background: var(--raised);
+        background: var(--card);
       }
 
       .day-cell:hover {
@@ -116,15 +118,17 @@ export class PtLogView extends LitElement {
 
       .day-dow {
         font-family: 'Manrope', sans-serif;
-        font-size: 10px;
-        font-weight: 700;
-        color: var(--muted);
+        font-size: 10.5px;
+        font-weight: 800;
+        opacity: 0.75;
+        color: var(--ink);
       }
 
       .day-num {
         font-family: 'Gabarito', sans-serif;
         font-size: 17px;
         font-weight: 800;
+        line-height: 1;
         color: var(--ink);
       }
 
@@ -141,46 +145,45 @@ export class PtLogView extends LitElement {
       }
 
       .week-strip-total {
-        flex-shrink: 0;
         text-align: right;
-        padding-left: 10px;
-        border-left: 1px solid var(--line);
+        flex-shrink: 0;
       }
 
       .week-strip-total-num {
         font-family: 'Gabarito', sans-serif;
         font-size: 22px;
         font-weight: 900;
+        line-height: 1;
         color: var(--ink);
       }
 
       .week-strip-total-label {
-        font-family: 'Manrope', sans-serif;
-        font-size: 11px;
+        font-size: 11.5px;
         color: var(--muted);
+        margin-top: 3px;
       }
 
       /* Filter chip row */
       .filter-row {
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 6px;
         flex-wrap: wrap;
       }
 
       .filter-chip {
         display: flex;
         align-items: center;
-        gap: 6px;
+        gap: 7px;
         border-radius: 999px;
-        padding: 8px 14px;
+        padding: 8px 13px;
         font-family: 'Manrope', sans-serif;
         font-size: 12.5px;
-        font-weight: 700;
+        font-weight: 800;
         cursor: pointer;
         border: none;
         user-select: none;
-        transition: background-color 140ms ease-out, color 140ms ease-out;
+        transition: background-color 160ms ease-out, color 160ms ease-out;
         background: var(--card);
         color: var(--muted);
       }
@@ -197,221 +200,41 @@ export class PtLogView extends LitElement {
         flex-shrink: 0;
       }
 
-      .filter-chip-spacer {
+      .filter-row-spacer {
         flex: 1;
       }
 
-      .btn-toggle-new {
-        background: transparent;
-        color: var(--muted);
+      .btn-past-session {
         border: 2px dashed var(--line);
         border-radius: 999px;
-        height: 38px;
-        padding: 0 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: 'Manrope', sans-serif;
+        padding: 7px 13px;
         font-size: 12.5px;
-        font-weight: 700;
+        font-weight: 800;
+        color: var(--muted);
         cursor: pointer;
-        transition: border-color 140ms ease-out, color 140ms ease-out;
+        background: none;
         white-space: nowrap;
       }
 
-      .btn-toggle-new:hover {
+      .btn-past-session:hover {
         border-color: var(--accent);
         color: var(--accent);
-      }
-
-      /* New Past Practice Form */
-      .new-panel {
-        background: var(--card);
-        border-radius: 20px;
-        padding: 18px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        animation: riseIn 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-      }
-
-      .form-section-title {
-        font-size: 10.5px;
-        color: var(--muted);
-        font-weight: 800;
-      }
-
-      .pills-wrap {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 7px;
-      }
-
-      .inst-select-pill {
-        border-radius: 999px;
-        padding: 9px 14px;
-        font-family: 'Manrope', sans-serif;
-        font-size: 12.5px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 140ms ease-out;
-        border: 1px solid var(--line);
-        user-select: none;
-        background: var(--raised);
-        color: var(--ink);
-      }
-
-      .chip-btn {
-        border-radius: 999px;
-        padding: 8px 14px;
-        font-family: 'Manrope', sans-serif;
-        font-size: 12.5px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 140ms ease-out;
-        border: none;
-        user-select: none;
-      }
-
-      .chip-btn.active {
-        background: var(--ink);
-        color: var(--bg);
-      }
-
-      .chip-btn.inactive {
-        background: var(--raised);
-        color: var(--muted);
-      }
-
-      .chip-btn.inactive:hover {
-        filter: brightness(1.1);
-      }
-
-      .when-row {
-        display: flex;
-        gap: 14px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-
-      .day-chips-wrap {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-
-      .datetime-inputs-wrap {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-
-      .duration-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        flex-wrap: wrap;
-      }
-
-      .duration-chips-wrap {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-
-      .labeled-input {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .mini-label {
-        font-size: 10.5px;
-        color: var(--muted);
-        font-weight: 800;
-      }
-
-      .date-time-input {
-        font-family: 'Manrope', sans-serif;
-        font-size: 12.5px;
-        font-weight: 600;
-        color: var(--ink);
-        background: var(--raised);
-        border: 1px solid var(--line);
-        border-radius: 999px;
-        height: 36px;
-        padding: 0 12px;
-        outline: none;
-        transition: border-color 140ms ease-out;
-      }
-
-      .date-time-input:focus {
-        border-color: var(--accent);
-      }
-
-      .new-inputs-row {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-
-      .note-text-input {
-        flex: 1;
-        min-width: 200px;
-        font-family: 'Manrope', sans-serif;
-        font-size: 13.5px;
-        color: var(--ink);
-        background: var(--raised);
-        border: 1px solid var(--line);
-        border-radius: 14px;
-        height: 44px;
-        padding: 0 14px;
-        outline: none;
-        transition: border-color 140ms ease-out;
-      }
-
-      .note-text-input:focus {
-        border-color: var(--accent);
-      }
-
-      .btn-add-log {
-        background: var(--accent);
-        color: var(--bg);
-        border-radius: 999px;
-        height: 44px;
-        padding: 0 22px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: 'Gabarito', sans-serif;
-        font-size: 13px;
-        font-weight: 800;
-        cursor: pointer;
-        border: none;
-        white-space: nowrap;
-        transition: background-color 150ms ease-out;
-      }
-
-      .btn-add-log:hover {
-        background: var(--accentHi);
       }
 
       /* Empty state */
       .empty-state-card {
         text-align: center;
         color: var(--muted);
-        padding: 36px 20px;
+        padding: 26px;
         background: var(--card);
-        border-radius: 20px;
-        font-family: 'Manrope', sans-serif;
-        font-size: 13.5px;
+        border-radius: 22px;
+        font-size: 14px;
       }
 
       .empty-clear-link {
         color: var(--accent);
         cursor: pointer;
-        text-decoration: underline;
+        font-weight: 800;
         border: none;
         background: transparent;
         font-family: inherit;
@@ -419,54 +242,48 @@ export class PtLogView extends LitElement {
         padding: 0;
       }
 
-      /* Grouped List */
+      /* Grouped list */
       .log-groups-list {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 6px;
       }
 
-      .log-group-card {
-        background: var(--card);
-        border-radius: 20px;
-        padding: 16px 18px;
+      .day-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
       }
 
       .group-header {
         display: flex;
         align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding-bottom: 8px;
+        gap: 10px;
+        padding: 6px 4px 0;
       }
 
-      .group-header-text {
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-        min-width: 0;
-      }
-
-      .group-date-title {
+      .group-day-title {
         font-family: 'Gabarito', sans-serif;
-        font-size: 14px;
+        font-size: 16px;
         font-weight: 800;
-        color: var(--ink);
       }
 
-      .group-rel-tag {
+      .group-date-sub {
+        font-size: 12px;
         color: var(--muted);
-        font-weight: 400;
-        font-family: 'Manrope', sans-serif;
+      }
+
+      .group-header-spacer {
+        flex: 1;
       }
 
       .group-duration-bar {
-        flex: 1;
-        display: none;
-        height: 4px;
-        border-radius: 2px;
+        width: 100px;
+        height: 8px;
+        border-radius: 999px;
         overflow: hidden;
-        background: var(--line);
+        display: none;
+        gap: 2px;
       }
 
       @media (min-width: 640px) {
@@ -481,263 +298,291 @@ export class PtLogView extends LitElement {
 
       .group-total-num {
         font-family: 'Gabarito', sans-serif;
-        font-size: 13px;
+        font-size: 14px;
         font-weight: 800;
-        color: var(--muted);
-        flex-shrink: 0;
+        min-width: 52px;
+        text-align: right;
       }
 
-      .log-row-container {
-        border-radius: 16px;
-        transition: background-color 140ms ease-out, border-color 140ms ease-out;
+      /* Session row */
+      .log-row {
+        background: var(--card);
+        border-radius: 20px;
         border: 2px solid transparent;
-        margin-top: 2px;
+        padding: 8px 12px 8px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition: border-color 160ms ease-out;
       }
 
-      .log-row-container.open {
-        background: var(--raised);
+      .log-row.open {
         border-color: var(--accent);
       }
 
-      .log-row-main {
+      .row-main {
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr) 60px 22px;
+        gap: 12px;
+        align-items: center;
+        cursor: pointer;
+      }
+
+      @media (min-width: 640px) {
+        .row-main {
+          grid-template-columns: 40px minmax(0, 1fr) 100px 60px 22px;
+        }
+      }
+
+      .row-family-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 13px;
         display: flex;
         align-items: center;
-        flex-wrap: wrap;
-        gap: 6px 12px;
-        padding: 10px 10px;
-        cursor: pointer;
-        user-select: none;
+        justify-content: center;
+        flex-shrink: 0;
       }
 
-      .row-time {
-        width: 62px;
-        flex-shrink: 0;
-        font-family: 'Manrope', sans-serif;
+      .icon-strings {
+        display: flex;
+        gap: 3px;
+        height: 18px;
+      }
+
+      .icon-strings span {
+        width: 2px;
+        background: var(--bg);
+        border-radius: 1px;
+      }
+
+      .icon-keys {
+        display: flex;
+        gap: 2px;
+        height: 16px;
+        margin-top: 4px;
+      }
+
+      .icon-keys span {
+        width: 5px;
+        background: var(--bg);
+        border-radius: 0 0 2px 2px;
+      }
+
+      .icon-pads {
+        display: grid;
+        grid-template-columns: 6px 6px;
+        gap: 3px;
+      }
+
+      .icon-pads span {
+        height: 6px;
+        border-radius: 50%;
+        background: var(--bg);
+      }
+
+      .icon-air {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 3px solid var(--bg);
+      }
+
+      .row-info {
+        min-width: 0;
+      }
+
+      .row-name-line {
+        font-size: 14px;
+        font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .row-time-tag {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        margin-left: 4px;
+      }
+
+      .row-note-line {
         font-size: 12.5px;
         color: var(--muted);
-        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 1px;
       }
 
-      .row-dot {
-        width: 8px;
+      .row-mini-bar {
+        display: none;
         height: 8px;
-        border-radius: 50%;
-        flex-shrink: 0;
+        border-radius: 999px;
+        background: var(--bg);
+        overflow: hidden;
       }
 
-      .row-inst-name {
-        flex: 1 1 130px;
-        min-width: 0;
-        font-family: 'Manrope', sans-serif;
-        font-size: 13.5px;
-        font-weight: 700;
-        color: var(--ink);
+      @media (min-width: 640px) {
+        .row-mini-bar {
+          display: block;
+        }
+      }
+
+      .row-mini-bar-fill {
+        height: 100%;
+        border-radius: 999px;
       }
 
       .row-duration {
-        width: 60px;
-        flex-shrink: 0;
         font-family: 'Gabarito', sans-serif;
-        font-size: 13px;
+        font-size: 16px;
         font-weight: 800;
-        color: var(--ink);
-        font-variant-numeric: tabular-nums;
+        text-align: right;
       }
 
-      .row-note {
-        flex: 2 1 180px;
-        min-width: 0;
-        font-family: 'Manrope', sans-serif;
-        font-size: 13px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        color: var(--muted);
+      .row-sync-dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #2E3B2F;
+        color: #9BD49B;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 900;
       }
 
-      /* Inline Editor Drawer */
-      .inline-editor-drawer {
-        padding: 6px 12px 14px;
+      /* Inline editor drawer */
+      .row-editor {
+        padding: 2px 0 4px 4px;
         display: flex;
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
         animation: fadeIn 180ms ease-out both;
       }
 
-      .btn-del-row {
-        border: none;
-        color: var(--accent);
-        background: transparent;
-        border-radius: 999px;
-        height: 42px;
-        padding: 0 16px;
+      .editor-chips-row {
         display: flex;
-        align-items: center;
-        justify-content: center;
-        font-family: 'Manrope', sans-serif;
-        font-size: 12.5px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: opacity 140ms ease-out;
+        gap: 6px;
+        flex-wrap: wrap;
       }
 
-      .btn-del-row:hover {
-        opacity: 0.75;
-      }
-
-      .btn-done-row {
-        background: var(--ink);
-        color: var(--bg);
-        border-radius: 999px;
-        height: 42px;
-        padding: 0 20px;
+      .editor-chip {
         display: flex;
         align-items: center;
-        justify-content: center;
-        font-family: 'Gabarito', sans-serif;
-        font-size: 12.5px;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
         font-weight: 800;
         cursor: pointer;
         border: none;
-        transition: opacity 140ms ease-out;
       }
 
-      .btn-done-row:hover {
-        opacity: 0.88;
+      .editor-chip-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
       }
 
-      /* Mobile Phone Mode (< 640px) */
+      .editor-actions-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .editor-stepper {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--bg);
+        border-radius: 999px;
+        padding: 4px;
+      }
+
+      .editor-stepper-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--raised);
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 18px;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .editor-stepper-value {
+        font-family: 'Gabarito', sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        min-width: 52px;
+        text-align: center;
+      }
+
+      .editor-note-input {
+        flex: 1;
+        min-width: 180px;
+        height: 46px;
+        border-radius: 999px;
+        background: var(--bg);
+        border: 2px solid var(--bg);
+        color: var(--ink);
+        padding: 0 16px;
+        font-size: 13.5px;
+        outline: none;
+        transition: border-color 140ms ease-out;
+      }
+
+      .editor-note-input:focus {
+        border-color: var(--line);
+      }
+
+      .editor-delete-btn {
+        height: 46px;
+        padding: 0 16px;
+        border-radius: 999px;
+        background: none;
+        border: none;
+        display: flex;
+        align-items: center;
+        font-size: 12.5px;
+        font-weight: 800;
+        color: var(--accent);
+        cursor: pointer;
+      }
+
+      .editor-done-btn {
+        height: 46px;
+        padding: 0 18px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--bg);
+        border: none;
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
       @media (max-width: 640px) {
-        .week-strip-card {
-          flex-direction: column;
-          align-items: stretch;
-          gap: 10px;
-        }
-
         .week-strip-total {
-          border-left: none;
-          border-top: 1px solid var(--line);
           text-align: left;
-          padding: 8px 0 0;
-        }
-
-        .btn-toggle-new {
-          width: 100%;
-        }
-
-        .new-panel {
-          padding: 14px 12px;
-          border-radius: 16px;
-        }
-
-        .when-row {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 10px;
-        }
-
-        .datetime-inputs-wrap {
-          width: 100%;
-          justify-content: space-between;
-        }
-
-        .new-inputs-row {
-          flex-direction: column;
-        }
-
-        .btn-add-log {
-          width: 100%;
-          height: 44px;
-        }
-
-        .log-group-card {
-          padding: 14px 12px;
-          border-radius: 16px;
-        }
-
-        .log-row-main {
-          padding: 10px 4px;
-          gap: 6px 8px;
-        }
-
-        .row-time {
-          width: 52px;
-          font-size: 11.5px;
-        }
-
-        .row-inst-name {
-          font-size: 13px;
-        }
-
-        .row-duration {
-          width: 48px;
-          font-size: 12px;
-        }
-
-        .row-note {
-          flex-basis: 100%;
-          margin-top: 2px;
         }
       }
     `,
   ];
 
-  private handleToggleNew() {
-    this.newOpen = !this.newOpen;
-    if (this.newOpen) {
-      if (!this.newInstId && this.instruments.length > 0) {
-        this.newInstId = this.instruments.filter((i) => !i.archived)[0]?.id || this.instruments[0].id;
-      }
-      const now = new Date();
-      this.newDayBack = 0;
-      this.newDate = toLocalDateStr(now);
-      this.newTime = toLocalTimeStr(now);
-      this.newNote = '';
-    }
-  }
-
-  private handleSelectDayBack(d: number) {
-    this.newDayBack = d;
-    const targetDate = addDays(dayStart(new Date()), -d);
-    this.newDate = toLocalDateStr(targetDate);
-  }
-
-  private handleDateInput(e: Event) {
-    const val = (e.target as HTMLInputElement).value;
-    this.newDate = val;
-    const today = toLocalDateStr(new Date());
-    const yesterday = toLocalDateStr(addDays(dayStart(new Date()), -1));
-    const twoDaysAgo = toLocalDateStr(addDays(dayStart(new Date()), -2));
-    const threeDaysAgo = toLocalDateStr(addDays(dayStart(new Date()), -3));
-
-    if (this.newDate === today) this.newDayBack = 0;
-    else if (this.newDate === yesterday) this.newDayBack = 1;
-    else if (this.newDate === twoDaysAgo) this.newDayBack = 2;
-    else if (this.newDate === threeDaysAgo) this.newDayBack = 3;
-    else this.newDayBack = -1;
-  }
-
-  private handleAddPastSession() {
-    if (!this.newInstId || !this.newDate) return;
-    const [year, month, day] = this.newDate.split('-').map(Number);
-    const [hours, minutes] = (this.newTime || '12:00').split(':').map(Number);
-    const sessionStart = new Date(year, month - 1, day, hours || 0, minutes || 0, 0, 0);
-
-    this.dispatchEvent(
-      new CustomEvent('save-manual-session', {
-        detail: {
-          instrumentId: this.newInstId,
-          start: sessionStart,
-          duration: this.newMin,
-          notes: this.newNote.trim() || undefined,
-        },
-        bubbles: true,
-        composed: true,
-      })
-    );
-
-    this.newOpen = false;
-    this.newNote = '';
+  private handleOpenManualLog() {
+    this.dispatchEvent(new CustomEvent('open-manual-log', { bubbles: true, composed: true }));
   }
 
   private handleToggleRow(r: { id: string; instrumentId: string; t: Date; min: number; notes?: string; start: string; duration: number }) {
@@ -795,6 +640,10 @@ export class PtLogView extends LitElement {
     this.openRowId = null;
   }
 
+  private adjustDuration(delta: number) {
+    this.editDurationDraft = Math.max(1, this.editDurationDraft + delta);
+  }
+
   private toggleDayFilter(key: number) {
     this.selectedDayFilter = this.selectedDayFilter === key ? null : key;
   }
@@ -802,6 +651,19 @@ export class PtLogView extends LitElement {
   private clearFilters() {
     this.selectedDayFilter = null;
     this.selectedInstFilter = null;
+  }
+
+  private renderFamilyIcon(family: RowFamily) {
+    if (family === 'keys') {
+      return html`<div class="icon-keys"><span></span><span></span><span></span></div>`;
+    }
+    if (family === 'pads') {
+      return html`<div class="icon-pads"><span></span><span></span><span></span><span></span></div>`;
+    }
+    if (family === 'air') {
+      return html`<div class="icon-air"></div>`;
+    }
+    return html`<div class="icon-strings"><span></span><span></span><span></span><span></span></div>`;
   }
 
   render() {
@@ -845,7 +707,7 @@ export class PtLogView extends LitElement {
       return `${h}:${String(t.getMinutes()).padStart(2, '0')}${ap}`;
     };
 
-    // Group by Day
+    // Group by day
     const groupMap = new Map<number, { key: number; t: Date; rows: typeof parsedSessions; min: number }>();
     parsedSessions.forEach((s) => {
       const k = dayStart(s.t).getTime();
@@ -859,13 +721,12 @@ export class PtLogView extends LitElement {
     });
 
     const groups = Array.from(groupMap.values());
-    const DURATION_OPTS = [15, 30, 45, 60, 90];
-    const currentSelectedInst = this.newInstId || activeInstruments[0]?.id;
+    const DURATION_STEP = 5;
 
     return html`
       <div class="log-wrap">
-        <!-- 7-day strip -->
-        <div class="week-strip-card">
+        <!-- 7-day strip (bare row, no card wrapper) -->
+        <div class="week-strip-row">
           <div class="week-strip-grid">
             ${last7Days.map((d) => {
               const key = d.getTime();
@@ -874,7 +735,7 @@ export class PtLogView extends LitElement {
               const dayInstColors = Array.from(
                 new Set(allParsed.filter((s) => dayStart(s.t).getTime() === key).map((s) => s.instrumentId))
               )
-                .slice(0, 3)
+                .slice(0, 2)
                 .map((id) => inst(id).color);
               return html`
                 <div
@@ -915,98 +776,9 @@ export class PtLogView extends LitElement {
               </button>
             `
           )}
-          <span class="filter-chip-spacer"></span>
-          <button class="btn-toggle-new" @click=${this.handleToggleNew}>
-            ${this.newOpen ? '✕ Cancel' : '+ past session'}
-          </button>
+          <span class="filter-row-spacer"></span>
+          <button class="btn-past-session" @click=${this.handleOpenManualLog}>+ past session</button>
         </div>
-
-        <!-- New Past Session Collapsible Form -->
-        ${this.newOpen
-          ? html`
-              <div class="new-panel">
-                <div class="form-section-title">What did you play?</div>
-                <div class="pills-wrap">
-                  ${activeInstruments.map((i) => {
-                    const isSel = currentSelectedInst === i.id;
-                    return html`
-                      <div
-                        class="inst-select-pill"
-                        style="background: ${isSel ? i.color : 'var(--raised)'}; color: ${isSel ? 'var(--bg)' : 'var(--ink)'}; border-color: ${isSel ? i.color : 'var(--line)'};"
-                        @click=${() => (this.newInstId = i.id)}
-                      >
-                        ${i.name}
-                      </div>
-                    `;
-                  })}
-                </div>
-
-                <div class="form-section-title">When &amp; How Long?</div>
-                <div class="when-row">
-                  <div class="day-chips-wrap">
-                    ${[
-                      { d: 0, label: 'Today' },
-                      { d: 1, label: 'Yesterday' },
-                      { d: 2, label: '2 days ago' },
-                      { d: 3, label: '3 days ago' },
-                    ].map(
-                      (item) => html`
-                        <button
-                          class="chip-btn ${this.newDayBack === item.d ? 'active' : 'inactive'}"
-                          @click=${() => this.handleSelectDayBack(item.d)}
-                        >
-                          ${item.label}
-                        </button>
-                      `
-                    )}
-                  </div>
-
-                  <div class="datetime-inputs-wrap">
-                    <div class="labeled-input">
-                      <span class="mini-label">Date</span>
-                      <input type="date" class="date-time-input" .value=${this.newDate} @input=${this.handleDateInput} />
-                    </div>
-                    <div class="labeled-input">
-                      <span class="mini-label">Time</span>
-                      <input
-                        type="time"
-                        class="date-time-input"
-                        .value=${this.newTime}
-                        @input=${(e: Event) => (this.newTime = (e.target as HTMLInputElement).value)}
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div class="duration-row">
-                  <span class="mini-label">Duration</span>
-                  <div class="duration-chips-wrap">
-                    ${DURATION_OPTS.map(
-                      (m) => html`
-                        <button class="chip-btn ${this.newMin === m ? 'active' : 'inactive'}" @click=${() => (this.newMin = m)}>
-                          ${m}m
-                        </button>
-                      `
-                    )}
-                  </div>
-                </div>
-
-                <div class="new-inputs-row">
-                  <input
-                    type="text"
-                    class="note-text-input"
-                    placeholder="What did you work on? (optional)"
-                    .value=${this.newNote}
-                    @input=${(e: Event) => (this.newNote = (e.target as HTMLInputElement).value)}
-                    @keydown=${(e: KeyboardEvent) => {
-                      if (e.key === 'Enter') this.handleAddPastSession();
-                    }}
-                  />
-                  <button class="btn-add-log" @click=${this.handleAddPastSession}>Add session</button>
-                </div>
-              </div>
-            `
-          : ''}
 
         <!-- Groups List -->
         <div class="log-groups-list">
@@ -1020,18 +792,16 @@ export class PtLogView extends LitElement {
             : groups.length > 0
             ? groups.map((g) => {
                 const daysAgo = dAgo(g.t);
-                const relLabel = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo}d ago`;
-                const dateLabel = `${DOW_NAMES[g.t.getDay()]} ${g.t.getDate()} ${MONTH_SHORT[g.t.getMonth()]}`;
+                const dayTitle = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${DOW_NAMES[g.t.getDay()]} ${g.t.getDate()} ${MONTH_SHORT[g.t.getMonth()]}`;
+                const dateSub = daysAgo <= 1 ? `${DOW_NAMES[g.t.getDay()]} ${g.t.getDate()} ${MONTH_SHORT[g.t.getMonth()]}` : '';
                 const segTotal = g.min || 1;
 
                 return html`
-                  <div class="log-group-card">
+                  <div class="day-group">
                     <div class="group-header">
-                      <div class="group-header-text">
-                        <div class="group-date-title">
-                          ${dateLabel} <span class="group-rel-tag">· ${relLabel}</span>
-                        </div>
-                      </div>
+                      <span class="group-day-title">${dayTitle}</span>
+                      ${dateSub ? html`<span class="group-date-sub">${dateSub}</span>` : ''}
+                      <span class="group-header-spacer"></span>
                       <div class="group-duration-bar">
                         ${g.rows.map(
                           (r) => html`
@@ -1042,100 +812,78 @@ export class PtLogView extends LitElement {
                           `
                         )}
                       </div>
-                      <div class="group-total-num">${fmtMin(g.min)}</div>
+                      <span class="group-total-num">${fmtMin(g.min)}</span>
                     </div>
 
-                    <div style="display: flex; flex-direction: column;">
-                      ${g.rows.map((r) => {
-                        const instrument = inst(r.instrumentId);
-                        const isOpen = this.openRowId === r.id;
+                    ${g.rows.map((r) => {
+                      const instrument = inst(r.instrumentId);
+                      const isOpen = this.openRowId === r.id;
+                      const family = familyFor(instrument);
+                      const dayMax = Math.max(...g.rows.map((row) => row.min), 1);
 
-                        return html`
-                          <div class="log-row-container ${isOpen ? 'open' : ''}">
-                            <div class="log-row-main" @click=${() => this.handleToggleRow(r)}>
-                              <div class="row-time">${hhmm(r.t)}</div>
-                              <span class="row-dot" style="background: ${instrument.color};"></span>
-                              <div class="row-inst-name">${instrument.name}</div>
-                              <div class="row-duration">${fmtMin(r.min)}</div>
-                              <div class="row-note">${r.notes || 'No note'}</div>
+                      return html`
+                        <div class="log-row ${isOpen ? 'open' : ''}">
+                          <div class="row-main" @click=${() => this.handleToggleRow(r)}>
+                            <div class="row-family-icon" style="background:${instrument.color}">
+                              ${this.renderFamilyIcon(family)}
                             </div>
-
-                            ${isOpen
-                              ? html`
-                                  <div class="inline-editor-drawer">
-                                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                                      <span class="mini-label">Instrument</span>
-                                      <div class="pills-wrap">
-                                        ${activeInstruments.map((i) => {
-                                          const isSel = (this.editInstIdDraft || r.instrumentId) === i.id;
-                                          return html`
-                                            <div
-                                              class="inst-select-pill"
-                                              style="padding: 6px 12px; font-size: 12px; background: ${isSel ? i.color : 'var(--card)'}; color: ${isSel ? 'var(--bg)' : 'var(--ink)'}; border-color: ${isSel ? i.color : 'var(--line)'};"
-                                              @click=${() => (this.editInstIdDraft = i.id)}
-                                            >
-                                              ${i.name}
-                                            </div>
-                                          `;
-                                        })}
-                                      </div>
-                                    </div>
-
-                                    <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
-                                      <div class="labeled-input">
-                                        <span class="mini-label">Date</span>
-                                        <input
-                                          type="date"
-                                          class="date-time-input"
-                                          .value=${this.editDateDraft}
-                                          @input=${(e: Event) => (this.editDateDraft = (e.target as HTMLInputElement).value)}
-                                        />
-                                      </div>
-                                      <div class="labeled-input">
-                                        <span class="mini-label">Time</span>
-                                        <input
-                                          type="time"
-                                          class="date-time-input"
-                                          .value=${this.editTimeDraft}
-                                          @input=${(e: Event) => (this.editTimeDraft = (e.target as HTMLInputElement).value)}
-                                        />
-                                      </div>
-                                      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                        <span class="mini-label" style="margin-right: 2px;">Length</span>
-                                        ${DURATION_OPTS.map(
-                                          (m) => html`
-                                            <button
-                                              class="chip-btn ${this.editDurationDraft === m ? 'active' : 'inactive'}"
-                                              @click=${() => (this.editDurationDraft = m)}
-                                            >
-                                              ${m}m
-                                            </button>
-                                          `
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                      <input
-                                        type="text"
-                                        class="note-text-input"
-                                        placeholder="What did you work on?"
-                                        .value=${this.editNoteDraft}
-                                        @input=${(e: Event) => (this.editNoteDraft = (e.target as HTMLInputElement).value)}
-                                        @keydown=${(e: KeyboardEvent) => {
-                                          if (e.key === 'Enter') this.handleSaveRow(r);
-                                        }}
-                                      />
-                                      <button class="btn-del-row" @click=${() => this.handleDelete(r.id)}>Delete</button>
-                                      <button class="btn-done-row" @click=${() => this.handleSaveRow(r)}>Save Changes</button>
-                                    </div>
-                                  </div>
-                                `
-                              : ''}
+                            <div class="row-info">
+                              <div class="row-name-line">
+                                ${instrument.name}<span class="row-time-tag">${hhmm(r.t)}</span>
+                              </div>
+                              <div class="row-note-line">${r.notes || 'No note'}</div>
+                            </div>
+                            <div class="row-mini-bar">
+                              <div class="row-mini-bar-fill" style="width:${(r.min / dayMax) * 100}%;background:${instrument.color}"></div>
+                            </div>
+                            <div class="row-duration">${fmtMin(r.min)}</div>
+                            <div class="row-sync-dot">✓</div>
                           </div>
-                        `;
-                      })}
-                    </div>
+
+                          ${isOpen
+                            ? html`
+                                <div class="row-editor">
+                                  <div class="editor-chips-row">
+                                    ${activeInstruments.map((i) => {
+                                      const isSel = (this.editInstIdDraft || r.instrumentId) === i.id;
+                                      return html`
+                                        <div
+                                          class="editor-chip"
+                                          style="background:${isSel ? i.color : 'var(--raised)'};color:${isSel ? 'var(--bg)' : 'var(--ink)'}"
+                                          @click=${() => (this.editInstIdDraft = i.id)}
+                                        >
+                                          <span class="editor-chip-dot" style="background:${isSel ? 'var(--bg)' : i.color}"></span>
+                                          ${i.name}
+                                        </div>
+                                      `;
+                                    })}
+                                  </div>
+
+                                  <div class="editor-actions-row">
+                                    <div class="editor-stepper">
+                                      <button class="editor-stepper-btn" @click=${() => this.adjustDuration(-DURATION_STEP)}>−</button>
+                                      <span class="editor-stepper-value">${this.editDurationDraft}m</span>
+                                      <button class="editor-stepper-btn" @click=${() => this.adjustDuration(DURATION_STEP)}>+</button>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      class="editor-note-input"
+                                      placeholder="Add a note"
+                                      .value=${this.editNoteDraft}
+                                      @input=${(e: Event) => (this.editNoteDraft = (e.target as HTMLInputElement).value)}
+                                      @keydown=${(e: KeyboardEvent) => {
+                                        if (e.key === 'Enter') this.handleSaveRow(r);
+                                      }}
+                                    />
+                                    <button class="editor-delete-btn" @click=${() => this.handleDelete(r.id)}>Delete</button>
+                                    <button class="editor-done-btn" @click=${() => this.handleSaveRow(r)}>Done</button>
+                                  </div>
+                                </div>
+                              `
+                            : ''}
+                        </div>
+                      `;
+                    })}
                   </div>
                 `;
               })
