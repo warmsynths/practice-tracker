@@ -4644,6 +4644,7 @@ ${x}`}class W extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
         <span>${s}</span>
       </button>
       ${this.syncPanelOpen?v`
+            <div class="sync-backdrop" @click=${()=>this.syncPanelOpen=!1}></div>
             <div class="sync-panel" @click=${i=>i.stopPropagation()}>
               <div class="sync-panel-title">
                 ${this.syncStatus==="syncing"?"Syncing…":`Synced ${this.settings.lastSyncedAt?cn(this.settings.lastSyncedAt):"now"}`}
@@ -4901,6 +4902,12 @@ ${x}`}class W extends Error{constructor({message:e,code:s,cause:i,name:r}){var n
       .sync-dot.saving { background: #FFC2A8; animation: softPulse 1s ease-in-out infinite; }
       .sync-dot.syncing { background: var(--chart); animation: softPulse 0.7s ease-in-out infinite; }
       .sync-dot.synced { background: #9BD49B; }
+
+      .sync-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 39;
+      }
 
       .sync-panel {
         position: absolute;

@@ -150,6 +150,12 @@ export class PtApp extends LitElement {
       .sync-dot.syncing { background: var(--chart); animation: softPulse 0.7s ease-in-out infinite; }
       .sync-dot.synced { background: #9BD49B; }
 
+      .sync-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 39;
+      }
+
       .sync-panel {
         position: absolute;
         top: 44px;
@@ -452,6 +458,7 @@ export class PtApp extends LitElement {
       </button>
       ${this.syncPanelOpen
         ? html`
+            <div class="sync-backdrop" @click=${() => (this.syncPanelOpen = false)}></div>
             <div class="sync-panel" @click=${(e: Event) => e.stopPropagation()}>
               <div class="sync-panel-title">
                 ${this.syncStatus === 'syncing' ? 'Syncing…' : `Synced ${this.settings.lastSyncedAt ? formatRelativeTime(this.settings.lastSyncedAt) : 'now'}`}
