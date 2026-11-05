@@ -172,7 +172,7 @@ export class PtEditSessionModal extends LitElement {
             />
           </div>
 
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+          <div style="display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px;">
             <div class="form-group">
               <label class="form-label">Date</label>
               <input

@@ -78,6 +78,30 @@ export function calculateStreak(sessions: Session[]): { currentStreak: number; c
   return { currentStreak, consistency30d };
 }
 
+/** Monday-of-the-week helper, matching bench-metrics.ts's week-goal boundary. */
+export function mondayOf(d: Date): Date {
+  const day = startOfDay(d);
+  const dow = day.getDay(); // 0 = Sunday
+  const daysSinceMonday = (dow + 6) % 7;
+  return addDays(day, -daysSinceMonday);
+}
+
+/**
+ * Minutes practiced so far this calendar week (Monday through today),
+ * matching the week-goal definition used by bench-metrics.ts's `weekTotal`.
+ */
+export function weekToDateMinutes(sessions: Session[], now: Date = new Date()): number {
+  const monday = mondayOf(now);
+  const tomorrow = addDays(startOfDay(now), 1);
+  return sessions
+    .filter((s) => !s.deletedAt)
+    .filter((s) => {
+      const start = new Date(s.start);
+      return start >= monday && start < tomorrow;
+    })
+    .reduce((sum, s) => sum + (s.duration || 0), 0);
+}
+
 export function formatRelativeTime(isoString: string | null | undefined): string {
   if (!isoString) return 'Never';
   const timestamp = new Date(isoString).getTime();

@@ -3,6 +3,7 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { Instrument, Session } from '../../types';
 import { commonStyles } from '../../styles/shared-styles';
 import { fmtMin, dayStart, addDays } from '../../utils/bench-metrics';
+import { glyphKindFor } from '../../utils/glyph-utils';
 
 function toLocalDateStr(d: Date): string {
   const y = d.getFullYear();
@@ -17,18 +18,24 @@ function toLocalTimeStr(d: Date): string {
   return `${h}:${min}`;
 }
 
+type RowFamily = 'strings' | 'keys' | 'pads' | 'air';
+
+function familyFor(instrument: Instrument | null | undefined): RowFamily {
+  const kind = glyphKindFor(instrument);
+  if (kind === 'piano') return 'keys';
+  if (kind === 'pads') return 'pads';
+  if (kind === 'wind' || kind === 'voice') return 'air';
+  return 'strings'; // acoustic, electric, bass
+}
+
+const DOW_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const DOW_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
 @customElement('pt-log-view')
 export class PtLogView extends LitElement {
   @property({ type: Array }) instruments: Instrument[] = [];
   @property({ type: Array }) sessions: Session[] = [];
-
-  @state() private newOpen: boolean = false;
-  @state() private newInstId: string = '';
-  @state() private newMin: number = 30;
-  @state() private newDayBack: number = 0; // 0=today, 1=yesterday, 2=2d, 3=3d, -1=custom
-  @state() private newDate: string = toLocalDateStr(new Date());
-  @state() private newTime: string = toLocalTimeStr(new Date());
-  @state() private newNote: string = '';
 
   @state() private openRowId: string | null = null;
   @state() private editInstIdDraft: string = '';
@@ -37,535 +44,545 @@ export class PtLogView extends LitElement {
   @state() private editDurationDraft: number = 30;
   @state() private editNoteDraft: string = '';
 
+  // Presentational-only filters — no store/event involvement.
+  @state() private selectedDayFilter: number | null = null; // dayStart() timestamp, or null = no day filter
+  @state() private selectedInstFilter: string | null = null; // instrument id, or null = "All"
+
   static styles = [
     commonStyles,
     css`
       :host {
         display: block;
-        animation: fadeOnly 200ms ease-out both;
-        color: #23241F;
-        font-family: 'DM Sans', system-ui, sans-serif;
+        animation: fadeIn 220ms ease-out both;
+        color: var(--ink);
+        font-family: 'Manrope', system-ui, sans-serif;
       }
 
       .log-wrap {
         display: flex;
         flex-direction: column;
-        gap: 14px;
+        gap: 12px;
         width: 100%;
         max-width: 1000px;
         margin: 0 auto;
       }
 
-      .log-summary-card {
-        background: #FAFAF7;
-        border-radius: 20px;
-        padding: 22px;
-        border: 1px solid #EBEAE3;
-        box-shadow: 0 4px 16px rgba(35, 36, 31, 0.03);
-      }
-
-      .log-header-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 16px;
-        flex-wrap: wrap;
-      }
-
-      .log-tag {
-        font-size: 9.5px;
-        letter-spacing: 0.13em;
-        color: #A3A297;
-        font-weight: 700;
-        text-transform: uppercase;
-      }
-
-      .log-total-title {
-        font-size: 24px;
-        font-weight: 700;
-        letter-spacing: -0.02em;
-        margin-top: 6px;
-        color: #23241F;
-      }
-
-      .log-count-sub {
-        font-size: 12px;
-        color: #767668;
-        margin-top: 3px;
-      }
-
-      .btn-toggle-new {
-        background: #23241F;
-        color: #F2F1EC;
-        border-radius: 12px;
-        height: 44px;
-        padding: 0 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-        border: none;
-        transition: background 150ms ease, transform 150ms ease;
-      }
-
-      .btn-toggle-new:hover {
-        background: #3A3B35;
-        transform: translateY(-1px);
-      }
-
-      /* New Past Practice Form */
-      .new-panel {
-        background: #FFFFFF;
-        border: 1px solid #E7E6DF;
-        border-radius: 16px;
-        padding: 18px;
-        margin-top: 16px;
-        display: flex;
-        flex-direction: column;
-        gap: 14px;
-        animation: riseIn 220ms cubic-bezier(0.16, 1, 0.3, 1) both;
-      }
-
-      .form-section-title {
-        font-size: 9.5px;
-        letter-spacing: 0.13em;
-        color: #A3A297;
-        font-weight: 700;
-        text-transform: uppercase;
-      }
-
-      .pills-wrap {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 7px;
-      }
-
-      .inst-select-pill {
-        border-radius: 11px;
-        padding: 9px 14px;
-        font-size: 12.5px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 140ms ease;
-        border: 1px solid #E7E6DF;
-        user-select: none;
-      }
-
-      .chip-btn {
-        border-radius: 11px;
-        padding: 8px 14px;
-        font-size: 12.5px;
-        font-weight: 700;
-        cursor: pointer;
-        transition: all 140ms ease;
-        border: none;
-        user-select: none;
-      }
-
-      .chip-btn.active {
-        background: #23241F;
-        color: #F2F1EC;
-      }
-
-      .chip-btn.inactive {
-        background: #F0EFEA;
-        color: #4A4945;
-      }
-
-      .chip-btn.inactive:hover {
-        background: #E5E4DC;
-      }
-
-      .when-row {
-        display: flex;
-        gap: 14px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-
-      .day-chips-wrap {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-
-      .datetime-inputs-wrap {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-
-      .duration-row {
+      /* 7-day strip — a bare row, not a card (matches the source exactly:
+         each day cell carries its own background, nothing wraps the row). */
+      .week-strip-row {
         display: flex;
         align-items: center;
         gap: 12px;
         flex-wrap: wrap;
       }
 
-      .duration-chips-wrap {
-        display: flex;
-        gap: 6px;
-        flex-wrap: wrap;
-      }
-
-      .labeled-input {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-      }
-
-      .mini-label {
-        font-size: 9.5px;
-        letter-spacing: 0.13em;
-        color: #A3A297;
-        font-weight: 700;
-        text-transform: uppercase;
-      }
-
-      .date-time-input {
-        font-family: inherit;
-        font-size: 12.5px;
-        font-weight: 600;
-        color: #23241F;
-        background: #F7F6F1;
-        border: 1px solid #E7E6DF;
-        border-radius: 10px;
-        height: 36px;
-        padding: 0 10px;
-        outline: none;
-        transition: border-color 140ms ease;
-      }
-
-      .date-time-input:focus {
-        border-color: #23241F;
-      }
-
-      .new-inputs-row {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-      }
-
-      .note-text-input {
+      .week-strip-grid {
         flex: 1;
-        min-width: 200px;
-        font-family: inherit;
-        font-size: 13.5px;
-        color: #23241F;
-        background: #F7F6F1;
-        border: 1px solid #E7E6DF;
-        border-radius: 12px;
-        height: 44px;
-        padding: 0 14px;
-        outline: none;
-        transition: border-color 140ms ease;
+        min-width: 260px;
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 5px;
       }
 
-      .note-text-input:focus {
-        border-color: #23241F;
-      }
-
-      .btn-add-log {
-        background: #4F6353;
-        color: #F7F6F1;
-        border-radius: 12px;
-        height: 44px;
-        padding: 0 22px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-        border: none;
-        white-space: nowrap;
-        transition: background 150ms ease, transform 150ms ease;
-      }
-
-      .btn-add-log:hover {
-        background: #435447;
-        transform: translateY(-1px);
-      }
-
-      /* Grouped List */
-      .log-groups-list {
+      .day-cell {
         display: flex;
         flex-direction: column;
-        gap: 10px;
-      }
-
-      .log-group-card {
-        background: #FAFAF7;
-        border-radius: 20px;
-        padding: 16px 18px;
-        border: 1px solid #EBEAE3;
-      }
-
-      .group-header {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        padding-bottom: 6px;
-      }
-
-      .group-date-title {
-        font-size: 13px;
-        font-weight: 700;
-        color: #23241F;
-      }
-
-      .group-rel-tag {
-        color: #A3A297;
-        font-weight: 400;
-      }
-
-      .group-total-num {
-        font-size: 12px;
-        font-weight: 700;
-        color: #767668;
-      }
-
-      .log-row-container {
-        border-top: 1px solid #EDECE6;
-        border-radius: 12px;
-        transition: background-color 140ms ease;
-      }
-
-      .log-row-container.open {
-        background: #F2F0EA;
-      }
-
-      .log-row-main {
-        display: flex;
         align-items: center;
-        flex-wrap: wrap;
-        gap: 6px 12px;
-        padding: 13px 8px;
+        gap: 4px;
+        padding: 7px 0 8px;
+        border-radius: 16px;
+        border: 2px solid transparent;
         cursor: pointer;
         user-select: none;
+        transition: background-color 160ms ease-out, border-color 160ms ease-out;
+        background: var(--card);
       }
 
-      .row-time {
-        width: 62px;
+      .day-cell:hover {
+        filter: brightness(1.08);
+      }
+
+      .day-cell.today {
+        border-color: var(--line);
+      }
+
+      .day-cell.selected {
+        background: var(--ink);
+        border-color: transparent;
+      }
+
+      .day-cell.selected .day-dow,
+      .day-cell.selected .day-num {
+        color: var(--bg);
+      }
+
+      .day-dow {
+        font-family: 'Manrope', sans-serif;
+        font-size: 10.5px;
+        font-weight: 800;
+        opacity: 0.75;
+        color: var(--ink);
+      }
+
+      .day-num {
+        font-family: 'Gabarito', sans-serif;
+        font-size: 17px;
+        font-weight: 800;
+        line-height: 1;
+        color: var(--ink);
+      }
+
+      .day-dots {
+        display: flex;
+        gap: 3px;
+        height: 6px;
+      }
+
+      .day-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+
+      .week-strip-total {
+        text-align: right;
         flex-shrink: 0;
-        font-size: 12.5px;
-        color: #767668;
-        font-variant-numeric: tabular-nums;
       }
 
-      .row-dot {
-        width: 8px;
-        height: 8px;
+      .week-strip-total-num {
+        font-family: 'Gabarito', sans-serif;
+        font-size: 22px;
+        font-weight: 900;
+        line-height: 1;
+        color: var(--ink);
+      }
+
+      .week-strip-total-label {
+        font-size: 11.5px;
+        color: var(--muted);
+        margin-top: 3px;
+      }
+
+      /* Filter chip row */
+      .filter-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .filter-chip {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        border-radius: 999px;
+        padding: 8px 13px;
+        font-family: 'Manrope', sans-serif;
+        font-size: 12.5px;
+        font-weight: 800;
+        cursor: pointer;
+        border: none;
+        user-select: none;
+        transition: background-color 160ms ease-out, color 160ms ease-out;
+        background: var(--card);
+        color: var(--muted);
+      }
+
+      .filter-chip.active {
+        background: var(--ink);
+        color: var(--bg);
+      }
+
+      .filter-chip-dot {
+        width: 7px;
+        height: 7px;
         border-radius: 50%;
         flex-shrink: 0;
       }
 
-      .row-inst-name {
-        flex: 1 1 130px;
-        min-width: 0;
-        font-size: 13.5px;
-        font-weight: 700;
-        color: #23241F;
+      .filter-row-spacer {
+        flex: 1;
       }
 
-      .row-duration {
-        width: 60px;
-        flex-shrink: 0;
-        font-size: 13px;
-        font-weight: 700;
-        color: #4A4945;
-        font-variant-numeric: tabular-nums;
-      }
-
-      .row-note {
-        flex: 2 1 180px;
-        min-width: 0;
-        font-family: 'Instrument Serif', serif;
-        font-style: italic;
-        font-size: 15px;
-        overflow: hidden;
-        text-overflow: ellipsis;
+      .btn-past-session {
+        border: 2px dashed var(--line);
+        border-radius: 999px;
+        padding: 7px 13px;
+        font-size: 12.5px;
+        font-weight: 800;
+        color: var(--muted);
+        cursor: pointer;
+        background: none;
         white-space: nowrap;
       }
 
-      /* Inline Editor Drawer */
-      .inline-editor-drawer {
-        padding: 8px 12px 14px;
+      .btn-past-session:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      /* Empty state */
+      .empty-state-card {
+        text-align: center;
+        color: var(--muted);
+        padding: 26px;
+        background: var(--card);
+        border-radius: 22px;
+        font-size: 14px;
+      }
+
+      .empty-clear-link {
+        color: var(--accent);
+        cursor: pointer;
+        font-weight: 800;
+        border: none;
+        background: transparent;
+        font-family: inherit;
+        font-size: inherit;
+        padding: 0;
+      }
+
+      /* Grouped list */
+      .log-groups-list {
         display: flex;
         flex-direction: column;
+        gap: 6px;
+      }
+
+      .day-group {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .group-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 4px 0;
+      }
+
+      .group-day-title {
+        font-family: 'Gabarito', sans-serif;
+        font-size: 16px;
+        font-weight: 800;
+      }
+
+      .group-date-sub {
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .group-header-spacer {
+        flex: 1;
+      }
+
+      .group-duration-bar {
+        width: 100px;
+        height: 8px;
+        border-radius: 999px;
+        overflow: hidden;
+        display: none;
+        gap: 2px;
+      }
+
+      @media (min-width: 640px) {
+        .group-duration-bar {
+          display: flex;
+        }
+      }
+
+      .group-duration-seg {
+        height: 100%;
+      }
+
+      .group-total-num {
+        font-family: 'Gabarito', sans-serif;
+        font-size: 14px;
+        font-weight: 800;
+        min-width: 52px;
+        text-align: right;
+      }
+
+      /* Session row */
+      .log-row {
+        background: var(--card);
+        border-radius: 20px;
+        border: 2px solid transparent;
+        padding: 8px 12px 8px 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        transition: border-color 160ms ease-out;
+      }
+
+      .log-row.open {
+        border-color: var(--accent);
+      }
+
+      .row-main {
+        display: grid;
+        grid-template-columns: 40px minmax(0, 1fr) 60px 22px;
         gap: 12px;
-        animation: riseIn 180ms ease-out both;
-      }
-
-      .btn-del-row {
-        border: 1px solid #E2CFC9;
-        color: #B4543C;
-        background: transparent;
-        border-radius: 12px;
-        height: 42px;
-        padding: 0 16px;
-        display: flex;
         align-items: center;
-        justify-content: center;
-        font-size: 12.5px;
-        font-weight: 700;
         cursor: pointer;
-        transition: background 140ms ease;
       }
 
-      .btn-del-row:hover {
-        background: #FDF4F2;
+      @media (min-width: 640px) {
+        .row-main {
+          grid-template-columns: 40px minmax(0, 1fr) 100px 60px 22px;
+        }
       }
 
-      .btn-done-row {
-        background: #23241F;
-        color: #F2F1EC;
-        border-radius: 12px;
-        height: 42px;
-        padding: 0 20px;
+      .row-family-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 13px;
         display: flex;
         align-items: center;
         justify-content: center;
+        flex-shrink: 0;
+      }
+
+      .icon-strings {
+        display: flex;
+        gap: 3px;
+        height: 18px;
+      }
+
+      .icon-strings span {
+        width: 2px;
+        background: var(--bg);
+        border-radius: 1px;
+      }
+
+      .icon-keys {
+        display: flex;
+        gap: 2px;
+        height: 16px;
+        margin-top: 4px;
+      }
+
+      .icon-keys span {
+        width: 5px;
+        background: var(--bg);
+        border-radius: 0 0 2px 2px;
+      }
+
+      .icon-pads {
+        display: grid;
+        grid-template-columns: 6px 6px;
+        gap: 3px;
+      }
+
+      .icon-pads span {
+        height: 6px;
+        border-radius: 50%;
+        background: var(--bg);
+      }
+
+      .icon-air {
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        border: 3px solid var(--bg);
+      }
+
+      .row-info {
+        min-width: 0;
+      }
+
+      .row-name-line {
+        font-size: 14px;
+        font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .row-time-tag {
+        font-size: 12px;
+        font-weight: 600;
+        color: var(--muted);
+        margin-left: 4px;
+      }
+
+      .row-note-line {
         font-size: 12.5px;
-        font-weight: 700;
+        color: var(--muted);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        margin-top: 1px;
+      }
+
+      .row-mini-bar {
+        display: none;
+        height: 8px;
+        border-radius: 999px;
+        background: var(--bg);
+        overflow: hidden;
+      }
+
+      @media (min-width: 640px) {
+        .row-mini-bar {
+          display: block;
+        }
+      }
+
+      .row-mini-bar-fill {
+        height: 100%;
+        border-radius: 999px;
+      }
+
+      .row-duration {
+        font-family: 'Gabarito', sans-serif;
+        font-size: 16px;
+        font-weight: 800;
+        text-align: right;
+      }
+
+      .row-sync-dot {
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #2E3B2F;
+        color: #9BD49B;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 900;
+      }
+
+      /* Inline editor drawer */
+      .row-editor {
+        padding: 2px 0 4px 4px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        animation: fadeIn 180ms ease-out both;
+      }
+
+      .editor-chips-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .editor-chip {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-radius: 999px;
+        padding: 8px 12px;
+        font-size: 12px;
+        font-weight: 800;
         cursor: pointer;
         border: none;
-        transition: background 140ms ease;
       }
 
-      .btn-done-row:hover {
-        background: #3A3B35;
+      .editor-chip-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
       }
 
-      /* Mobile Phone Mode (< 640px) */
+      .editor-actions-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      .editor-stepper {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--bg);
+        border-radius: 999px;
+        padding: 4px;
+      }
+
+      .editor-stepper-btn {
+        width: 38px;
+        height: 38px;
+        border-radius: 50%;
+        background: var(--raised);
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        font-size: 18px;
+        color: var(--ink);
+        cursor: pointer;
+      }
+
+      .editor-stepper-value {
+        font-family: 'Gabarito', sans-serif;
+        font-weight: 800;
+        font-size: 15px;
+        min-width: 52px;
+        text-align: center;
+      }
+
+      .editor-note-input {
+        flex: 1;
+        min-width: 180px;
+        height: 46px;
+        border-radius: 999px;
+        background: var(--bg);
+        border: 2px solid var(--bg);
+        color: var(--ink);
+        padding: 0 16px;
+        font-size: 13.5px;
+        outline: none;
+        transition: border-color 140ms ease-out;
+      }
+
+      .editor-note-input:focus {
+        border-color: var(--line);
+      }
+
+      .editor-delete-btn {
+        height: 46px;
+        padding: 0 16px;
+        border-radius: 999px;
+        background: none;
+        border: none;
+        display: flex;
+        align-items: center;
+        font-size: 12.5px;
+        font-weight: 800;
+        color: var(--accent);
+        cursor: pointer;
+      }
+
+      .editor-done-btn {
+        height: 46px;
+        padding: 0 18px;
+        border-radius: 999px;
+        background: var(--ink);
+        color: var(--bg);
+        border: none;
+        display: flex;
+        align-items: center;
+        font-size: 13px;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
       @media (max-width: 640px) {
-        .log-summary-card {
-          padding: 16px 14px;
-          border-radius: 18px;
-        }
-
-        .btn-toggle-new {
-          width: 100%;
-          height: 42px;
-        }
-
-        .new-panel {
-          padding: 14px 12px;
-          border-radius: 14px;
-        }
-
-        .when-row {
-          flex-direction: column;
-          align-items: flex-start;
-          gap: 10px;
-        }
-
-        .datetime-inputs-wrap {
-          width: 100%;
-          justify-content: space-between;
-        }
-
-        .new-inputs-row {
-          flex-direction: column;
-        }
-
-        .btn-add-log {
-          width: 100%;
-          height: 44px;
-        }
-
-        .log-group-card {
-          padding: 14px 12px;
-          border-radius: 16px;
-        }
-
-        .log-row-main {
-          padding: 10px 4px;
-          gap: 6px 8px;
-        }
-
-        .row-time {
-          width: 52px;
-          font-size: 11.5px;
-        }
-
-        .row-inst-name {
-          font-size: 13px;
-        }
-
-        .row-duration {
-          width: 48px;
-          font-size: 12px;
-        }
-
-        .row-note {
-          font-size: 13.5px;
-          flex-basis: 100%;
-          margin-top: 2px;
+        .week-strip-total {
+          text-align: left;
         }
       }
     `,
   ];
 
-  private handleToggleNew() {
-    this.newOpen = !this.newOpen;
-    if (this.newOpen) {
-      if (!this.newInstId && this.instruments.length > 0) {
-        this.newInstId = this.instruments.filter((i) => !i.archived)[0]?.id || this.instruments[0].id;
-      }
-      const now = new Date();
-      this.newDayBack = 0;
-      this.newDate = toLocalDateStr(now);
-      this.newTime = toLocalTimeStr(now);
-      this.newNote = '';
-    }
-  }
-
-  private handleSelectDayBack(d: number) {
-    this.newDayBack = d;
-    const targetDate = addDays(dayStart(new Date()), -d);
-    this.newDate = toLocalDateStr(targetDate);
-  }
-
-  private handleDateInput(e: Event) {
-    const val = (e.target as HTMLInputElement).value;
-    this.newDate = val;
-    const today = toLocalDateStr(new Date());
-    const yesterday = toLocalDateStr(addDays(dayStart(new Date()), -1));
-    const twoDaysAgo = toLocalDateStr(addDays(dayStart(new Date()), -2));
-    const threeDaysAgo = toLocalDateStr(addDays(dayStart(new Date()), -3));
-
-    if (this.newDate === today) this.newDayBack = 0;
-    else if (this.newDate === yesterday) this.newDayBack = 1;
-    else if (this.newDate === twoDaysAgo) this.newDayBack = 2;
-    else if (this.newDate === threeDaysAgo) this.newDayBack = 3;
-    else this.newDayBack = -1;
-  }
-
-  private handleAddPastSession() {
-    if (!this.newInstId || !this.newDate) return;
-    const [year, month, day] = this.newDate.split('-').map(Number);
-    const [hours, minutes] = (this.newTime || '12:00').split(':').map(Number);
-    const sessionStart = new Date(year, month - 1, day, hours || 0, minutes || 0, 0, 0);
-
-    this.dispatchEvent(
-      new CustomEvent('save-manual-session', {
-        detail: {
-          instrumentId: this.newInstId,
-          start: sessionStart,
-          duration: this.newMin,
-          notes: this.newNote.trim() || undefined,
-        },
-        bubbles: true,
-        composed: true,
-      })
-    );
-
-    this.newOpen = false;
-    this.newNote = '';
+  private handleOpenManualLog() {
+    this.dispatchEvent(new CustomEvent('open-manual-log', { bubbles: true, composed: true }));
   }
 
   private handleToggleRow(r: { id: string; instrumentId: string; t: Date; min: number; notes?: string; start: string; duration: number }) {
@@ -623,6 +640,32 @@ export class PtLogView extends LitElement {
     this.openRowId = null;
   }
 
+  private adjustDuration(delta: number) {
+    this.editDurationDraft = Math.max(1, this.editDurationDraft + delta);
+  }
+
+  private toggleDayFilter(key: number) {
+    this.selectedDayFilter = this.selectedDayFilter === key ? null : key;
+  }
+
+  private clearFilters() {
+    this.selectedDayFilter = null;
+    this.selectedInstFilter = null;
+  }
+
+  private renderFamilyIcon(family: RowFamily) {
+    if (family === 'keys') {
+      return html`<div class="icon-keys"><span></span><span></span><span></span></div>`;
+    }
+    if (family === 'pads') {
+      return html`<div class="icon-pads"><span></span><span></span><span></span><span></span></div>`;
+    }
+    if (family === 'air') {
+      return html`<div class="icon-air"></div>`;
+    }
+    return html`<div class="icon-strings"><span></span><span></span><span></span><span></span></div>`;
+  }
+
   render() {
     const activeInstruments = this.instruments.filter((i) => !i.archived);
     const instMap = new Map<string, Instrument>();
@@ -630,7 +673,7 @@ export class PtLogView extends LitElement {
     const inst = (id: string): Instrument =>
       instMap.get(id) || { id, name: 'Instrument', color: '#6B7F6E', tier: 'primary' };
 
-    const parsedSessions = this.sessions
+    const allParsed = this.sessions
       .filter((s) => !s.deletedAt)
       .map((s) => ({
         ...s,
@@ -639,13 +682,24 @@ export class PtLogView extends LitElement {
       }))
       .sort((a, b) => b.t.getTime() - a.t.getTime());
 
-    const totalMinutes = parsedSessions.reduce((sum, s) => sum + s.min, 0);
-    const totalCount = parsedSessions.length;
-
     const today = dayStart(new Date());
+
+    // --- 7-day strip data ---
+    const last7Days = Array.from({ length: 7 }, (_, i) => addDays(today, -(6 - i)));
+    const weekStripTotal = allParsed
+      .filter((s) => dayStart(s.t).getTime() >= last7Days[0].getTime())
+      .reduce((sum, s) => sum + s.min, 0);
+
+    // --- Apply filters (presentational only) ---
+    const parsedSessions = allParsed.filter((s) => {
+      if (this.selectedDayFilter != null && dayStart(s.t).getTime() !== this.selectedDayFilter) return false;
+      if (this.selectedInstFilter && s.instrumentId !== this.selectedInstFilter) return false;
+      return true;
+    });
+
+    const totalCount = allParsed.length;
+
     const dAgo = (t: Date) => Math.round((today.getTime() - dayStart(t).getTime()) / 86400000);
-    const DOW_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const hhmm = (t: Date) => {
       let h = t.getHours();
       const ap = h >= 12 ? 'pm' : 'am';
@@ -653,7 +707,7 @@ export class PtLogView extends LitElement {
       return `${h}:${String(t.getMinutes()).padStart(2, '0')}${ap}`;
     };
 
-    // Group by Day
+    // Group by day
     const groupMap = new Map<number, { key: number; t: Date; rows: typeof parsedSessions; min: number }>();
     parsedSessions.forEach((s) => {
       const k = dayStart(s.t).getTime();
@@ -667,251 +721,175 @@ export class PtLogView extends LitElement {
     });
 
     const groups = Array.from(groupMap.values());
-    const DURATION_OPTS = [15, 30, 45, 60, 90];
-
-    const currentSelectedInst = this.newInstId || activeInstruments[0]?.id;
+    const DURATION_STEP = 5;
 
     return html`
       <div class="log-wrap">
-        <!-- Summary & Toggle Bar -->
-        <div class="log-summary-card">
-          <div class="log-header-row">
-            <div>
-              <div class="log-tag">The Log</div>
-              <div class="log-total-title">${fmtMin(totalMinutes)}</div>
-              <div class="log-count-sub">${totalCount} sessions logged in total</div>
-            </div>
-            <button class="btn-toggle-new" @click=${this.handleToggleNew}>
-              ${this.newOpen ? '✕ Cancel' : '+ Log a past session'}
-            </button>
-          </div>
-
-          <!-- New Past Session Collapsible Form -->
-          ${this.newOpen
-            ? html`
-                <div class="new-panel">
-                  <div class="form-section-title">What did you play?</div>
-                  <div class="pills-wrap">
-                    ${activeInstruments.map((i) => {
-                      const isSel = currentSelectedInst === i.id;
-                      return html`
-                        <div
-                          class="inst-select-pill"
-                          style="background: ${isSel ? i.color : '#FBFBF9'}; color: ${isSel ? '#FBFBF9' : '#23241F'}; border-color: ${isSel ? i.color : '#E7E6DF'};"
-                          @click=${() => (this.newInstId = i.id)}
-                        >
-                          ${i.name}
-                        </div>
-                      `;
-                    })}
-                  </div>
-
-                  <div class="form-section-title">When & How Long?</div>
-                  <div class="when-row">
-                    <div class="day-chips-wrap">
-                      ${[
-                        { d: 0, label: 'Today' },
-                        { d: 1, label: 'Yesterday' },
-                        { d: 2, label: '2 days ago' },
-                        { d: 3, label: '3 days ago' },
-                      ].map(
-                        (item) => html`
-                          <button
-                            class="chip-btn ${this.newDayBack === item.d ? 'active' : 'inactive'}"
-                            @click=${() => this.handleSelectDayBack(item.d)}
-                          >
-                            ${item.label}
-                          </button>
-                        `
-                      )}
-                    </div>
-
-                    <div class="datetime-inputs-wrap">
-                      <div class="labeled-input">
-                        <span class="mini-label">DATE</span>
-                        <input
-                          type="date"
-                          class="date-time-input"
-                          .value=${this.newDate}
-                          @input=${this.handleDateInput}
-                        />
-                      </div>
-                      <div class="labeled-input">
-                        <span class="mini-label">TIME</span>
-                        <input
-                          type="time"
-                          class="date-time-input"
-                          .value=${this.newTime}
-                          @input=${(e: Event) => (this.newTime = (e.target as HTMLInputElement).value)}
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div class="duration-row">
-                    <span class="mini-label">DURATION</span>
-                    <div class="duration-chips-wrap">
-                      ${DURATION_OPTS.map(
-                        (m) => html`
-                          <button
-                            class="chip-btn ${this.newMin === m ? 'active' : 'inactive'}"
-                            @click=${() => (this.newMin = m)}
-                          >
-                            ${m}m
-                          </button>
-                        `
-                      )}
-                    </div>
-                  </div>
-
-                  <div class="new-inputs-row">
-                    <input
-                      type="text"
-                      class="note-text-input"
-                      placeholder="Note / what did you work on? (optional)"
-                      .value=${this.newNote}
-                      @input=${(e: Event) => (this.newNote = (e.target as HTMLInputElement).value)}
-                      @keydown=${(e: KeyboardEvent) => {
-                        if (e.key === 'Enter') this.handleAddPastSession();
-                      }}
-                    />
-                    <button class="btn-add-log" @click=${this.handleAddPastSession}>
-                      Add to the log
-                    </button>
+        <!-- 7-day strip (bare row, no card wrapper) -->
+        <div class="week-strip-row">
+          <div class="week-strip-grid">
+            ${last7Days.map((d) => {
+              const key = d.getTime();
+              const isToday = key === today.getTime();
+              const isSelected = this.selectedDayFilter === key;
+              const dayInstColors = Array.from(
+                new Set(allParsed.filter((s) => dayStart(s.t).getTime() === key).map((s) => s.instrumentId))
+              )
+                .slice(0, 2)
+                .map((id) => inst(id).color);
+              return html`
+                <div
+                  class="day-cell ${isToday ? 'today' : ''} ${isSelected ? 'selected' : ''}"
+                  @click=${() => this.toggleDayFilter(key)}
+                >
+                  <div class="day-dow">${DOW_SHORT[d.getDay()]}</div>
+                  <div class="day-num">${d.getDate()}</div>
+                  <div class="day-dots">
+                    ${dayInstColors.map((c) => html`<span class="day-dot" style="background:${c}"></span>`)}
                   </div>
                 </div>
-              `
-            : ''}
+              `;
+            })}
+          </div>
+          <div class="week-strip-total">
+            <div class="week-strip-total-num">${fmtMin(weekStripTotal)}</div>
+            <div class="week-strip-total-label">last 7 days</div>
+          </div>
+        </div>
+
+        <!-- Filter row -->
+        <div class="filter-row">
+          <button
+            class="filter-chip ${this.selectedInstFilter === null ? 'active' : ''}"
+            @click=${() => (this.selectedInstFilter = null)}
+          >
+            All
+          </button>
+          ${activeInstruments.map(
+            (i) => html`
+              <button
+                class="filter-chip ${this.selectedInstFilter === i.id ? 'active' : ''}"
+                @click=${() => (this.selectedInstFilter = this.selectedInstFilter === i.id ? null : i.id)}
+              >
+                <span class="filter-chip-dot" style="background:${i.color}"></span>
+                ${i.name}
+              </button>
+            `
+          )}
+          <span class="filter-row-spacer"></span>
+          <button class="btn-past-session" @click=${this.handleOpenManualLog}>+ past session</button>
         </div>
 
         <!-- Groups List -->
         <div class="log-groups-list">
-          ${groups.length > 0
+          ${totalCount === 0
+            ? html`
+                <div class="empty-state-card">
+                  No practice sessions logged yet. Use <strong>+ past session</strong> above or start a live timer from
+                  <strong>Today</strong>.
+                </div>
+              `
+            : groups.length > 0
             ? groups.map((g) => {
                 const daysAgo = dAgo(g.t);
-                const relLabel = daysAgo === 0 ? 'today' : daysAgo === 1 ? 'yesterday' : `${daysAgo}d ago`;
-                const dateLabel = `${DOW_NAMES[g.t.getDay()]} ${g.t.getDate()} ${MONTH_SHORT[g.t.getMonth()]}`;
+                const dayTitle = daysAgo === 0 ? 'Today' : daysAgo === 1 ? 'Yesterday' : `${DOW_NAMES[g.t.getDay()]} ${g.t.getDate()} ${MONTH_SHORT[g.t.getMonth()]}`;
+                const dateSub = daysAgo <= 1 ? `${DOW_NAMES[g.t.getDay()]} ${g.t.getDate()} ${MONTH_SHORT[g.t.getMonth()]}` : '';
+                const segTotal = g.min || 1;
 
                 return html`
-                  <div class="log-group-card">
+                  <div class="day-group">
                     <div class="group-header">
-                      <div class="group-date-title">
-                        ${dateLabel} <span class="group-rel-tag">· ${relLabel}</span>
+                      <span class="group-day-title">${dayTitle}</span>
+                      ${dateSub ? html`<span class="group-date-sub">${dateSub}</span>` : ''}
+                      <span class="group-header-spacer"></span>
+                      <div class="group-duration-bar">
+                        ${g.rows.map(
+                          (r) => html`
+                            <span
+                              class="group-duration-seg"
+                              style="width:${(r.min / segTotal) * 100}%;background:${inst(r.instrumentId).color}"
+                            ></span>
+                          `
+                        )}
                       </div>
-                      <div class="group-total-num">${fmtMin(g.min)}</div>
+                      <span class="group-total-num">${fmtMin(g.min)}</span>
                     </div>
 
-                    <div style="display: flex; flex-direction: column;">
-                      ${g.rows.map((r) => {
-                        const instrument = inst(r.instrumentId);
-                        const isOpen = this.openRowId === r.id;
+                    ${g.rows.map((r) => {
+                      const instrument = inst(r.instrumentId);
+                      const isOpen = this.openRowId === r.id;
+                      const family = familyFor(instrument);
+                      const dayMax = Math.max(...g.rows.map((row) => row.min), 1);
 
-                        return html`
-                          <div class="log-row-container ${isOpen ? 'open' : ''}">
-                            <div class="log-row-main" @click=${() => this.handleToggleRow(r)}>
-                              <div class="row-time">${hhmm(r.t)}</div>
-                              <span class="row-dot" style="background: ${instrument.color};"></span>
-                              <div class="row-inst-name">${instrument.name}</div>
-                              <div class="row-duration">${fmtMin(r.min)}</div>
-                              <div
-                                class="row-note"
-                                style="color: ${r.notes ? '#4A4945' : '#B0AFA4'};"
-                              >
-                                ${r.notes || 'add a note'}
-                              </div>
+                      return html`
+                        <div class="log-row ${isOpen ? 'open' : ''}">
+                          <div class="row-main" @click=${() => this.handleToggleRow(r)}>
+                            <div class="row-family-icon" style="background:${instrument.color}">
+                              ${this.renderFamilyIcon(family)}
                             </div>
-
-                            ${isOpen
-                              ? html`
-                                  <div class="inline-editor-drawer">
-                                    <div style="display: flex; flex-direction: column; gap: 6px;">
-                                      <span class="mini-label">INSTRUMENT</span>
-                                      <div class="pills-wrap">
-                                        ${activeInstruments.map((i) => {
-                                          const isSel = (this.editInstIdDraft || r.instrumentId) === i.id;
-                                          return html`
-                                            <div
-                                              class="inst-select-pill"
-                                              style="padding: 6px 12px; font-size: 12px; background: ${isSel ? i.color : '#FFFFFF'}; color: ${isSel ? '#FBFBF9' : '#23241F'}; border-color: ${isSel ? i.color : '#E7E6DF'};"
-                                              @click=${() => (this.editInstIdDraft = i.id)}
-                                            >
-                                              ${i.name}
-                                            </div>
-                                          `;
-                                        })}
-                                      </div>
-                                    </div>
-
-                                    <div style="display: flex; gap: 14px; flex-wrap: wrap; align-items: center;">
-                                      <div class="labeled-input">
-                                        <span class="mini-label">DATE</span>
-                                        <input
-                                          type="date"
-                                          class="date-time-input"
-                                          style="background: #FFFFFF;"
-                                          .value=${this.editDateDraft}
-                                          @input=${(e: Event) => (this.editDateDraft = (e.target as HTMLInputElement).value)}
-                                        />
-                                      </div>
-                                      <div class="labeled-input">
-                                        <span class="mini-label">TIME</span>
-                                        <input
-                                          type="time"
-                                          class="date-time-input"
-                                          style="background: #FFFFFF;"
-                                          .value=${this.editTimeDraft}
-                                          @input=${(e: Event) => (this.editTimeDraft = (e.target as HTMLInputElement).value)}
-                                        />
-                                      </div>
-                                      <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                                        <span class="mini-label" style="margin-right: 2px;">LENGTH</span>
-                                        ${DURATION_OPTS.map(
-                                          (m) => html`
-                                            <button
-                                              class="chip-btn ${this.editDurationDraft === m ? 'active' : 'inactive'}"
-                                              style="${this.editDurationDraft === m ? '' : 'background: #FFFFFF;'}"
-                                              @click=${() => (this.editDurationDraft = m)}
-                                            >
-                                              ${m}m
-                                            </button>
-                                          `
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                                      <input
-                                        type="text"
-                                        class="note-text-input"
-                                        style="background: #FFFFFF;"
-                                        placeholder="What did you work on?"
-                                        .value=${this.editNoteDraft}
-                                        @input=${(e: Event) =>
-                                          (this.editNoteDraft = (e.target as HTMLInputElement).value)}
-                                        @keydown=${(e: KeyboardEvent) => {
-                                          if (e.key === 'Enter') this.handleSaveRow(r);
-                                        }}
-                                      />
-                                      <button class="btn-del-row" @click=${() => this.handleDelete(r.id)}>
-                                        Delete
-                                      </button>
-                                      <button class="btn-done-row" @click=${() => this.handleSaveRow(r)}>
-                                        Save Changes
-                                      </button>
-                                    </div>
-                                  </div>
-                                `
-                              : ''}
+                            <div class="row-info">
+                              <div class="row-name-line">
+                                ${instrument.name}<span class="row-time-tag">${hhmm(r.t)}</span>
+                              </div>
+                              <div class="row-note-line">${r.notes || 'No note'}</div>
+                            </div>
+                            <div class="row-mini-bar">
+                              <div class="row-mini-bar-fill" style="width:${(r.min / dayMax) * 100}%;background:${instrument.color}"></div>
+                            </div>
+                            <div class="row-duration">${fmtMin(r.min)}</div>
+                            <div class="row-sync-dot">✓</div>
                           </div>
-                        `;
-                      })}
-                    </div>
+
+                          ${isOpen
+                            ? html`
+                                <div class="row-editor">
+                                  <div class="editor-chips-row">
+                                    ${activeInstruments.map((i) => {
+                                      const isSel = (this.editInstIdDraft || r.instrumentId) === i.id;
+                                      return html`
+                                        <div
+                                          class="editor-chip"
+                                          style="background:${isSel ? i.color : 'var(--raised)'};color:${isSel ? 'var(--bg)' : 'var(--ink)'}"
+                                          @click=${() => (this.editInstIdDraft = i.id)}
+                                        >
+                                          <span class="editor-chip-dot" style="background:${isSel ? 'var(--bg)' : i.color}"></span>
+                                          ${i.name}
+                                        </div>
+                                      `;
+                                    })}
+                                  </div>
+
+                                  <div class="editor-actions-row">
+                                    <div class="editor-stepper">
+                                      <button class="editor-stepper-btn" @click=${() => this.adjustDuration(-DURATION_STEP)}>−</button>
+                                      <span class="editor-stepper-value">${this.editDurationDraft}m</span>
+                                      <button class="editor-stepper-btn" @click=${() => this.adjustDuration(DURATION_STEP)}>+</button>
+                                    </div>
+                                    <input
+                                      type="text"
+                                      class="editor-note-input"
+                                      placeholder="Add a note"
+                                      .value=${this.editNoteDraft}
+                                      @input=${(e: Event) => (this.editNoteDraft = (e.target as HTMLInputElement).value)}
+                                      @keydown=${(e: KeyboardEvent) => {
+                                        if (e.key === 'Enter') this.handleSaveRow(r);
+                                      }}
+                                    />
+                                    <button class="editor-delete-btn" @click=${() => this.handleDelete(r.id)}>Delete</button>
+                                    <button class="editor-done-btn" @click=${() => this.handleSaveRow(r)}>Done</button>
+                                  </div>
+                                </div>
+                              `
+                            : ''}
+                        </div>
+                      `;
+                    })}
                   </div>
                 `;
               })
             : html`
-                <div class="log-summary-card" style="text-align: center; color: #767668; padding: 36px 20px;">
-                  No practice sessions logged yet. Use <strong>+ Log a past session</strong> above or start a live timer in <strong>Practice</strong>.
+                <div class="empty-state-card">
+                  No sessions match. <button class="empty-clear-link" @click=${this.clearFilters}>Clear filters</button>
                 </div>
               `}
         </div>
@@ -919,4 +897,3 @@ export class PtLogView extends LitElement {
     `;
   }
 }
-

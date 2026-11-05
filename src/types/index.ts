@@ -1,11 +1,16 @@
 export type InstrumentTier = 'primary' | 'secondary';
 
+export type ThemeId = 'plum' | 'moss' | 'indigo' | 'dusk' | 'paper' | 'glacier';
+
+export type GlyphKind = 'acoustic' | 'electric' | 'bass' | 'piano' | 'pads' | 'wind' | 'voice';
+
 export interface Instrument {
   id: string;
   name: string;
   color: string;
   tier: InstrumentTier;
   rank?: number; // Priority rank (1 = Highest importance, 2 = 2nd, etc.)
+  glyphKind?: GlyphKind; // Which animated glyph represents this instrument
   archived?: boolean;
   updatedAt?: string;
   deletedAt?: string;
@@ -44,6 +49,10 @@ export interface AppSettings {
   syncPasscode?: string;
   lastSyncedAt?: string;
   userEmail?: string;
+  theme?: ThemeId;
+  celebrateGoal?: boolean;
+  heroGlyphAnimated?: boolean;
+  reduceMotion?: boolean;
 }
 
 export interface SyncRequestPayload {
@@ -72,7 +81,7 @@ export interface AuthState {
   isLoading: boolean;
 }
 
-export type TabType = 'practice' | 'log' | 'kit' | 'settings' | 'main' | 'data';
+export type TabType = 'today' | 'log' | 'insights' | 'settings';
 export type DataPeriodType = 'week' | 'month' | 'year' | 'all';
 
 export interface DataBucketSegment {

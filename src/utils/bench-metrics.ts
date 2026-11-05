@@ -616,7 +616,7 @@ export function calculateBenchStats(
 
   const records: RecordsItem[] = [
     {
-      k: 'LONGEST SESSION',
+      k: 'Longest session',
       v: fmtMin(longest.min),
       sub: `${inst(longest.instrumentId).name} · ${longest.t.toLocaleDateString(undefined, {
         day: 'numeric',
@@ -625,7 +625,7 @@ export function calculateBenchStats(
       fresh: Math.round((today.getTime() - dayStart(longest.t).getTime()) / 86400000) <= 21,
     },
     {
-      k: 'BIGGEST WEEK',
+      k: 'Biggest week',
       v: fmtMin(bigWeek.v),
       sub: `week of ${bigWeek.m.toLocaleDateString(undefined, {
         day: 'numeric',
@@ -634,13 +634,13 @@ export function calculateBenchStats(
       fresh: Math.round((today.getTime() - dayStart(bigWeek.m).getTime()) / 86400000) <= 21,
     },
     {
-      k: 'LONGEST STREAK',
+      k: 'Longest streak',
       v: `${bestStreak} ${bestStreak === 1 ? 'day' : 'days'}`,
       sub: streak >= bestStreak && streak >= 3 ? 'you are on it now' : `${streak}d in currently`,
       fresh: streak >= bestStreak && streak >= 3,
     },
     {
-      k: 'BIGGEST DAY',
+      k: 'Biggest day',
       v: fmtMin(byDay[Number(bigDayKey)] || 0),
       sub: bigDayDate.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
       fresh: Math.round((today.getTime() - dayStart(bigDayDate).getTime()) / 86400000) <= 21,
@@ -654,7 +654,7 @@ export function calculateBenchStats(
   const freshLine =
     freshRecords.length === 0
       ? 'No reading has moved in three weeks. One long sitting would change that.'
-      : freshRecords[0].k === 'LONGEST STREAK'
+      : freshRecords[0].k === 'Longest streak'
       ? `Your longest streak is the one you are standing in right now — ${bestStreak} days and counting.`
       : `New ${freshRecords[0].k.toLowerCase()}: ${freshRecords[0].v}, ${freshRecords[0].sub.toLowerCase()}. That one is yours to beat now.`;
 

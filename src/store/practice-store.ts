@@ -15,11 +15,11 @@ import { syncEngine, TestConnectionResult } from '../services/sync-engine';
 import { authService } from '../services/auth-service';
 
 export const DEFAULT_INSTRUMENTS: Instrument[] = [
-  { id: 'guitar', name: 'Guitar', color: '#6B7F6E', tier: 'primary', updatedAt: new Date(0).toISOString() },
-  { id: 'piano', name: 'Piano', color: '#8A7B94', tier: 'primary', updatedAt: new Date(0).toISOString() },
-  { id: 'acoustic', name: 'Acoustic Guitar', color: '#9FAF95', tier: 'secondary', updatedAt: new Date(0).toISOString() },
-  { id: 'bass', name: 'Bass', color: '#7D6E7F', tier: 'secondary', updatedAt: new Date(0).toISOString() },
-  { id: 'drumming', name: 'Finger Drumming', color: '#A98F72', tier: 'secondary', updatedAt: new Date(0).toISOString() },
+  { id: 'guitar', name: 'Guitar', color: '#6B7F6E', tier: 'primary', glyphKind: 'electric', updatedAt: new Date(0).toISOString() },
+  { id: 'piano', name: 'Piano', color: '#8A7B94', tier: 'primary', glyphKind: 'piano', updatedAt: new Date(0).toISOString() },
+  { id: 'acoustic', name: 'Acoustic Guitar', color: '#9FAF95', tier: 'secondary', glyphKind: 'acoustic', updatedAt: new Date(0).toISOString() },
+  { id: 'bass', name: 'Bass', color: '#7D6E7F', tier: 'secondary', glyphKind: 'bass', updatedAt: new Date(0).toISOString() },
+  { id: 'drumming', name: 'Finger Drumming', color: '#A98F72', tier: 'secondary', glyphKind: 'pads', updatedAt: new Date(0).toISOString() },
 ];
 
 export const FALLBACK_INSTRUMENT: Instrument = {
@@ -69,7 +69,14 @@ class PracticeStore {
   private instruments: Instrument[] = [];
   private sessions: Session[] = [];
   private activeSession: ActiveSession | null = null;
-  private settings: AppSettings = { soundEnabled: true, hapticsEnabled: true };
+  private settings: AppSettings = {
+    soundEnabled: true,
+    hapticsEnabled: true,
+    theme: 'plum',
+    celebrateGoal: true,
+    heroGlyphAnimated: true,
+    reduceMotion: false,
+  };
   private tombstones: Tombstone[] = [];
   private syncStatus: SyncStatus = 'local';
   private syncErrorMessage: string | null = null;
